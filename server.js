@@ -61,15 +61,11 @@ function auth(req, res, next) {
 
 /* ================= ROTAS ================= */
 
-app.get("/", (req, res) => {
-    res.redirect("/login")
-})
+app.get("/", (req, res) => res.redirect("/login"))
 
 /* LOGIN */
 
-app.get("/login", (req, res) => {
-    res.render("login")
-})
+app.get("/login", (req, res) => res.render("login"))
 
 app.post("/login", (req, res) => {
 
@@ -97,7 +93,14 @@ app.get("/dashboard", auth, (req, res) => {
 app.get("/caixa", auth, (req, res) => {
 
     db.get("SELECT * FROM caixa WHERE data_fechamento IS NULL", (err, caixa) => {
-        res.render("caixa", { caixa })
+
+        if (err) {
+            console.log(err)
+            return res.send("Erro no caixa")
+        }
+
+        res.render("caixa", { caixa: caixa || null })
+
     })
 
 })
@@ -136,13 +139,13 @@ app.post("/fechar-caixa", (req, res) => {
     })
 })
 
-/* ================= TESTE ================= */
+/* TESTE */
 
 app.get("/teste", (req, res) => {
     res.send("OK ONLINE 🚀")
 })
 
-/* ================= SERVER ================= */
+/* SERVER */
 
 const PORT = process.env.PORT || 3000
 
