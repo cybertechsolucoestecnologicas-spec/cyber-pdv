@@ -78,7 +78,9 @@ function verificarLogin(req,res,next){
     next()
 }
 
-app.get("/",(req,res)=> res.redirect("/login"))
+app.get("/",(req,res)=>{
+    res.render("login",{layout:false})
+})
 
 app.get("/login",(req,res)=> res.render("login",{layout:false}))
 
@@ -123,21 +125,14 @@ res.render("dashboard",{
 /* ================= CAIXA ================= */
 
 app.get("/caixa", verificarLogin, (req,res)=>{
-
 db.get("SELECT * FROM caixa WHERE data_fechamento IS NULL ORDER BY id DESC",(err,caixa)=>{
 res.render("caixa",{caixa})
 })
-
 })
 
 app.post("/abrir-caixa",(req,res)=>{
-
 const valor = parseFloat(req.body.valor) || 0
-
-db.run("INSERT INTO caixa(valor_inicial) VALUES(?)",[valor],()=>{
-res.redirect("/caixa")
-})
-
+db.run("INSERT INTO caixa(valor_inicial) VALUES(?)",[valor],()=> res.redirect("/caixa"))
 })
 
 app.post("/fechar-caixa",(req,res)=>{
@@ -153,15 +148,13 @@ const valorInicial = caixa.valor_inicial ? parseFloat(caixa.valor_inicial) : 0
 
 const valorFinal = valorInicial + totalVendas
 
-db.run(
-"UPDATE caixa SET valor_final=?, data_fechamento=CURRENT_TIMESTAMP WHERE id=?",
+db.run("UPDATE caixa SET valor_final=?, data_fechamento=CURRENT_TIMESTAMP WHERE id=?",
 [valorFinal, caixa.id],
 ()=>{
 
 res.send(`
 <h2>Caixa fechado!</h2>
 <p>Total vendido: R$ ${totalVendas.toFixed(2)}</p>
-<p>Valor inicial: R$ ${valorInicial.toFixed(2)}</p>
 <p>Valor final: R$ ${valorFinal.toFixed(2)}</p>
 <a href="/dashboard">Voltar</a>
 `)
@@ -178,14 +171,9 @@ res.send(`
 
 app.get("/vendas", verificarLogin, (req,res)=>{
 
-db.get("SELECT * FROM caixa WHERE data_fechamento IS NULL ORDER BY id DESC",(err,caixa)=>{
-
-if(!caixa){
-return res.send("⚠️ Abra o caixa primeiro!")
-}
-
+db.get("SELECT * FROM caixa WHERE data_fechamento IS NULL",(err,caixa)=>{
+if(!caixa) return res.send("⚠️ Abra o caixa primeiro!")
 res.render("vendas")
-
 })
 
 })
@@ -198,7 +186,6 @@ const pagamento = req.body.pagamento
 let totalVenda = 0
 
 itens.forEach(item=>{
-
 db.run("INSERT INTO vendas(produto,quantidade,total,pagamento) VALUES(?,?,?,?)",
 [item.produto,item.quantidade,item.total,pagamento])
 
@@ -206,7 +193,6 @@ db.run("UPDATE produtos SET quantidade = quantidade - ? WHERE nome=?",
 [item.quantidade,item.produto])
 
 totalVenda += item.total
-
 })
 
 res.render("cupom",{itens,total:totalVenda,pagamento})
@@ -218,104 +204,68 @@ res.render("cupom",{itens,total:totalVenda,pagamento})
 app.get("/produtos", verificarLogin, (req,res)=> res.render("produtos"))
 
 app.post("/salvar-produto",(req,res)=>{
-
 const {codigo,nome,preco,quantidade}=req.body
-
 db.run("INSERT INTO produtos(codigo,nome,preco,quantidade) VALUES(?,?,?,?)",
 [codigo,nome,preco,quantidade],
 ()=> res.redirect("/lista-produtos"))
-
 })
 
 app.get("/lista-produtos",(req,res)=>{
-
 db.all("SELECT * FROM produtos",[],(err,rows)=>{
 res.render("lista",{produtos:rows})
 })
-
 })
 
 app.get("/editar/:id",(req,res)=>{
-
 db.get("SELECT * FROM produtos WHERE id=?",[req.params.id],(err,produto)=>{
 res.render("editar",{produto})
 })
-
 })
 
 app.post("/atualizar/:id",(req,res)=>{
-
 const {codigo,nome,preco,quantidade}=req.body
-
 db.run("UPDATE produtos SET codigo=?,nome=?,preco=?,quantidade=? WHERE id=?",
 [codigo,nome,preco,quantidade,req.params.id],
 ()=> res.redirect("/lista-produtos"))
-
 })
 
 app.get("/deletar/:id",(req,res)=>{
-
 db.run("DELETE FROM produtos WHERE id=?",[req.params.id],
 ()=> res.redirect("/lista-produtos"))
-
 })
 
 app.get("/buscar-produto/:codigo",(req,res)=>{
-
 db.get("SELECT * FROM produtos WHERE codigo=?",[req.params.codigo],
 (err,produto)=> res.json(produto))
-
 })
 
 /* ================= RELATORIO ================= */
 
 app.get("/relatorio", verificarLogin, (req,res)=>{
 
-db.get(`
-SELECT SUM(total) as hoje
-FROM vendas
-WHERE date(data)=date('now')
-`,(err,hoje)=>{
-
-db.get(`
-SELECT SUM(total) as mes
-FROM vendas
-WHERE strftime('%m',data)=strftime('%m','now')
-`,(err,mes)=>{
-
+db.get(`SELECT SUM(total) as hoje FROM vendas WHERE date(data)=date('now')`,(err,hoje)=>{
+db.get(`SELECT SUM(total) as mes FROM vendas WHERE strftime('%m',data)=strftime('%m','now')`,(err,mes)=>{
 db.get(`SELECT COUNT(*) as total FROM vendas`,(err,total)=>{
-
-db.get(`
-SELECT produto, COUNT(*) as qtd
-FROM vendas
-GROUP BY produto
-ORDER BY qtd DESC
-LIMIT 1
-`,(err,top)=>{
-
+db.get(`SELECT produto FROM vendas GROUP BY produto ORDER BY COUNT(*) DESC LIMIT 1`,(err,top)=>{
 db.all("SELECT * FROM vendas ORDER BY id DESC",[],(err,vendas)=>{
 
 res.render("relatorio",{
-    vendas: vendas || [],
-    hoje: hoje?.hoje || 0,
-    mes: mes?.mes || 0,
-    total: total?.total || 0,
-    top: top || {produto:"Nenhum"}
+vendas: vendas || [],
+hoje: hoje?.hoje || 0,
+mes: mes?.mes || 0,
+total: total?.total || 0,
+top: top || {produto:"Nenhum"}
+})
+
+})
+})
+})
+})
 })
 
 })
 
-})
-
-})
-
-})
-
-})
-
-})
-
-/* ================= SERVER ================= */
+/* ================= PORTA RENDER ================= */
 
 const PORT = process.env.PORT || 3000
 
