@@ -9,7 +9,7 @@ const app = express()
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 
-/* ================= SESSÃO (IMPORTANTE PRA RENDER) ================= */
+/* ================= SESSÃO ================= */
 app.use(session({
     store: new SQLiteStore({ db: "sessions.db", dir: "./database" }),
     secret: "cyberpdv",
@@ -51,6 +51,14 @@ db.serialize(() => {
         data DATETIME DEFAULT CURRENT_TIMESTAMP
     )`)
 
+    db.run(`CREATE TABLE IF NOT EXISTS caixa(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        valor_inicial REAL,
+        valor_final REAL,
+        data_abertura DATETIME DEFAULT CURRENT_TIMESTAMP,
+        data_fechamento DATETIME
+    )`)
+
     db.run(`
     INSERT INTO usuarios(usuario,senha)
     SELECT 'admin','1234'
@@ -59,7 +67,7 @@ db.serialize(() => {
 
 })
 
-/* ================= MIDDLEWARE LOGIN ================= */
+/* ================= MIDDLEWARE ================= */
 function auth(req, res, next) {
     if (!req.session.user) return res.redirect("/login")
     next()
@@ -69,11 +77,10 @@ function auth(req, res, next) {
 
 app.get("/", (req, res) => res.redirect("/login"))
 
-app.get("/login", (req, res) => {
-    res.render("login")
-})
+app.get("/login", (req, res) => res.render("login"))
 
 app.post("/login", (req, res) => {
+
     const { usuario, senha } = req.body
 
     db.get("SELECT * FROM usuarios WHERE usuario=? AND senha=?",
@@ -111,9 +118,7 @@ app.get("/dashboard", auth, (req, res) => {
 
 /* ================= PRODUTOS ================= */
 
-app.get("/produtos", auth, (req, res) => {
-    res.render("produtos")
-})
+app.get("/produtos", auth, (req, res) => res.render("produtos"))
 
 app.post("/salvar-produto", (req, res) => {
 
@@ -131,13 +136,68 @@ app.get("/lista-produtos", (req, res) => {
     db.all("SELECT * FROM produtos", [], (err, rows) => {
         res.render("lista", { produtos: rows })
     })
+
+})
+
+/* ================= CAIXA ================= */
+
+app.get("/caixa", auth, (req, res) => {
+
+    db.get("SELECT * FROM caixa WHERE data_fechamento IS NULL", (err, caixa) => {
+        res.render("caixa", { caixa })
+    })
+
+})
+
+app.post("/abrir-caixa", (req, res) => {
+
+    const valor = parseFloat(req.body.valor) || 0
+
+    db.run("INSERT INTO caixa(valor_inicial) VALUES(?)",
+        [valor],
+        () => res.redirect("/caixa")
+    )
+
+})
+
+app.post("/fechar-caixa", (req, res) => {
+
+    db.get("SELECT * FROM caixa WHERE data_fechamento IS NULL", (err, caixa) => {
+
+        if (!caixa) return res.redirect("/caixa")
+
+        db.get("SELECT SUM(total) as total FROM vendas WHERE data >= ?",
+            [caixa.data_abertura],
+            (err, vendas) => {
+
+                const totalVendas = vendas?.total || 0
+                const valorFinal = caixa.valor_inicial + totalVendas
+
+                db.run(
+                    "UPDATE caixa SET valor_final=?, data_fechamento=CURRENT_TIMESTAMP WHERE id=?",
+                    [valorFinal, caixa.id],
+                    () => {
+
+                        res.send(`
+                        <h2>Caixa fechado!</h2>
+                        <p>Total vendido: R$ ${totalVendas.toFixed(2)}</p>
+                        <p>Valor final: R$ ${valorFinal.toFixed(2)}</p>
+                        <a href="/dashboard">Voltar</a>
+                        `)
+
+                    }
+                )
+
+            }
+        )
+
+    })
+
 })
 
 /* ================= VENDAS ================= */
 
-app.get("/vendas", auth, (req, res) => {
-    res.render("vendas")
-})
+app.get("/vendas", auth, (req, res) => res.render("vendas"))
 
 app.post("/finalizar-venda", (req, res) => {
 
@@ -162,7 +222,6 @@ app.post("/finalizar-venda", (req, res) => {
 app.get("/relatorio", auth, (req, res) => {
 
     db.all("SELECT * FROM vendas ORDER BY id DESC", [], (err, vendas) => {
-
         res.render("relatorio", { vendas })
     })
 
