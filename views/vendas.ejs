@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Caixa Profissional</title>
+
+<style>
+body{
+    font-family: Arial;
+    background:#f4f4f4;
+    padding:20px;
+}
+
+h1{
+    text-align:center;
+}
+
+input,button,select{
+    padding:10px;
+    margin:5px;
+    font-size:16px;
+}
+
+table{
+    width:100%;
+    background:#fff;
+    border-collapse: collapse;
+    margin-top:20px;
+}
+
+th,td{
+    padding:10px;
+    border:1px solid #ddd;
+    text-align:center;
+}
+
+button{
+    cursor:pointer;
+}
+
+.total{
+    font-size:22px;
+    text-align:right;
+    margin-top:20px;
+}
+
+.finalizar{
+    background:green;
+    color:#fff;
+    border:none;
+}
+
+.remover{
+    background:red;
+    color:#fff;
+}
+
+.qtd{
+    background:#007bff;
+    color:#fff;
+}
+
+.troco{
+    font-size:18px;
+    margin-top:10px;
+    text-align:right;
+}
+</style>
+
+</head>
+<body>
+
+<h1>🛒 Caixa Profissional</h1>
+
+<input type="text" id="codigo" placeholder="Código de barras" autofocus>
+<button onclick="buscarProduto()">Adicionar</button>
+
+<br>
+
+<select id="pagamento">
+    <option value="Dinheiro">Dinheiro</option>
+    <option value="PIX">PIX</option>
+    <option value="Cartão">Cartão</option>
+</select>
+
+<input type="number" id="valorPago" placeholder="Valor recebido">
+
+<table>
+<thead>
+<tr>
+    <th>Produto</th>
+    <th>Qtd</th>
+    <th>Preço</th>
+    <th>Total</th>
+    <th>Ações</th>
+</tr>
+</thead>
+
+<tbody id="carrinho"></tbody>
+</table>
+
+<div class="total">
+Total: R$ <span id="total">0.00</span>
+</div>
+
+<div class="troco">
+Troco: R$ <span id="troco">0.00</span>
+</div>
+
+<form action="/finalizar-venda" method="POST" onsubmit="prepararCarrinho()">
+<input type="hidden" name="carrinho" id="carrinhoInput">
+<input type="hidden" name="pagamento" id="pagamentoInput">
+
+<button class="finalizar">💰 Finalizar Venda</button>
+</form>
+
+<script>
+let carrinho = []
+let total = 0
+
+async function buscarProduto(){
+
+    const codigo = document.getElementById("codigo").value
+
+    if(!codigo) return
+
+    const res = await fetch("/buscar-produto/" + codigo)
+    const produto = await res.json()
+
+    if(!produto){
+        alert("Produto não encontrado")
+        return
+    }
+
+    adicionarCarrinho(produto)
+    document.getElementById("codigo").value = ""
+}
+
+function adicionarCarrinho(produto){
+
+    let item = carrinho.find(i => i.produto === produto.nome)
+
+    if(item){
+        item.quantidade++
+        item.total += produto.preco
+    }else{
+        carrinho.push({
+            produto: produto.nome,
+            quantidade: 1,
+            preco: produto.preco,
+            total: produto.preco
+        })
+    }
+
+    atualizar()
+}
+
+function atualizar(){
+
+    const tbody = document.getElementById("carrinho")
+    tbody.innerHTML = ""
+
+    total = 0
+
+    carrinho.forEach((item,index)=>{
+
+        total += item.total
+
+        tbody.innerHTML += `
+        <tr>
+            <td>${item.produto}</td>
+            <td>
+                <button class="qtd" onclick="alterarQtd(${index},-1)">-</button>
+                ${item.quantidade}
+                <button class="qtd" onclick="alterarQtd(${index},1)">+</button>
+            </td>
+            <td>R$ ${item.preco}</td>
+            <td>R$ ${item.total.toFixed(2)}</td>
+            <td>
+                <button class="remover" onclick="remover(${index})">X</button>
+            </td>
+        </tr>
+        `
+    })
+
+    document.getElementById("total").innerText = total.toFixed(2)
+    calcularTroco()
+}
+
+function alterarQtd(index,valor){
+
+    carrinho[index].quantidade += valor
+
+    if(carrinho[index].quantidade <= 0){
+        carrinho.splice(index,1)
+    }else{
+        carrinho[index].total = carrinho[index].quantidade * carrinho[index].preco
+    }
+
+    atualizar()
+}
+
+function remover(index){
+    carrinho.splice(index,1)
+    atualizar()
+}
+
+function calcularTroco(){
+
+    const pago = parseFloat(document.getElementById("valorPago").value) || 0
+    const troco = pago - total
+
+    document.getElementById("troco").innerText = troco > 0 ? troco.toFixed(2) : "0.00"
+}
+
+document.getElementById("valorPago").addEventListener("input", calcularTroco)
+
+function prepararCarrinho(){
+    document.getElementById("carrinhoInput").value = JSON.stringify(carrinho)
+    document.getElementById("pagamentoInput").value = document.getElementById("pagamento").value
+}
+</script>
+
+</body>
+</html>

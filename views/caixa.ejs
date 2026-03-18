@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Caixa</title>
+</head>
+<body>
+
+<h1>Controle de Caixa</h1>
+
+<% if(!caixa){ %>
+
+<form action="/abrir-caixa" method="POST">
+<input type="number" name="valor" placeholder="Valor inicial">
+<button>Abrir Caixa</button>
+</form>
+
+<% } else { %>
+
+<p>Caixa aberto</p>
+
+<form action="/fechar-caixa" method="POST">
+<button>Fechar Caixa</button>
+</form>
+
+<% } %>
+
+</body>
+</html>

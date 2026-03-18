@@ -1,0 +1,88 @@
+body{
+font-family: Arial, Helvetica, sans-serif;
+background:#f4f6f9;
+margin:0;
+padding:0;
+}
+
+.topo{
+background:#2c3e50;
+color:white;
+padding:15px;
+font-size:22px;
+}
+
+.menu{
+background:#34495e;
+padding:10px;
+}
+
+.menu a{
+color:white;
+text-decoration:none;
+margin-right:20px;
+font-weight:bold;
+}
+
+.menu a:hover{
+color:#1abc9c;
+}
+
+.container{
+padding:30px;
+}
+
+.cards{
+display:flex;
+gap:20px;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:10px;
+box-shadow:0 2px 5px rgba(0,0,0,0.2);
+width:200px;
+text-align:center;
+}
+
+.card h2{
+margin:10px 0;
+font-size:28px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+}
+
+table th, table td{
+padding:10px;
+border:1px solid #ddd;
+text-align:center;
+}
+
+table th{
+background:#2c3e50;
+color:white;
+}
+
+button{
+padding:8px 15px;
+border:none;
+background:#27ae60;
+color:white;
+border-radius:5px;
+cursor:pointer;
+}
+
+button:hover{
+background:#2ecc71;
+}
+
+input, select{
+padding:8px;
+width:100%;
+margin-bottom:10px;
+}

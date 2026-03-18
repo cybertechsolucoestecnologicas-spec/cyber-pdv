@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Estoque</title>
+
+<link rel="stylesheet" href="/css/style.css">
+
+<style>
+
+.baixo{
+color:red;
+font-weight:bold;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>Cyber PDV</header>
+
+<div class="container">
+
+<h2>Estoque</h2>
+
+<table>
+
+<tr>
+
+<th>ID</th>
+<th>Código</th>
+<th>Produto</th>
+<th>Preço</th>
+<th>Quantidade</th>
+<th>Ações</th>
+
+</tr>
+
+<% produtos.forEach(p=>{ %>
+
+<tr>
+
+<td><%= p.id %></td>
+<td><%= p.codigo %></td>
+<td><%= p.nome %></td>
+<td>R$ <%= p.preco %></td>
+
+<td class="<%= p.quantidade <= 5 ? 'baixo' : '' %>">
+
+<%= p.quantidade %>
+
+<% if(p.quantidade <=5){ %>
+
+⚠
+
+<% } %>
+
+</td>
+
+<td>
+
+<a href="/editar/<%= p.id %>">Editar</a>
+
+<a href="/deletar/<%= p.id %>">Excluir</a>
+
+</td>
+
+</tr>
+
+<% }) %>
+
+</table>
+
+</div>
+
+</body>
+
+</html>

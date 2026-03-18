@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Editar Produto</title>
+
+<link rel="stylesheet" href="/css/style.css">
+
+</head>
+
+<body>
+
+<header>Cyber PDV</header>
+
+<div class="container">
+
+<h2>Editar Produto</h2>
+
+<form action="/atualizar/<%= produto.id %>" method="POST">
+
+<input name="codigo" value="<%= produto.codigo %>">
+
+<input name="nome" value="<%= produto.nome %>">
+
+<input name="preco" value="<%= produto.preco %>">
+
+<input name="quantidade" value="<%= produto.quantidade %>">
+
+<button>Atualizar</button>
+
+</form>
+
+</div>
+
+</body>
+</html>
