@@ -2,6 +2,7 @@ const express = require("express")
 const sqlite3 = require("sqlite3").verbose()
 const path = require("path")
 const session = require("express-session")
+const expressLayouts = require("express-ejs-layouts")
 
 const app = express()
 
@@ -14,6 +15,10 @@ app.set("view engine", "ejs")
 app.set("views", path.join(__dirname, "views"))
 
 app.use(express.static("public"))
+
+/* LAYOUT */
+app.use(expressLayouts)
+app.set("layout", "layout")
 
 /* ================= SESSION ================= */
 
@@ -65,7 +70,9 @@ app.get("/", (req, res) => res.redirect("/login"))
 
 /* LOGIN */
 
-app.get("/login", (req, res) => res.render("login"))
+app.get("/login", (req, res) => {
+    res.render("login", { layout: false })
+})
 
 app.post("/login", (req, res) => {
 
@@ -82,10 +89,15 @@ app.post("/login", (req, res) => {
         })
 })
 
+app.get("/logout", (req, res) => {
+    req.session.destroy()
+    res.redirect("/login")
+})
+
 /* DASHBOARD */
 
 app.get("/dashboard", auth, (req, res) => {
-    res.render("dashboard")
+    res.render("dashboard", { user: req.session.user })
 })
 
 /* ================= CAIXA ================= */
@@ -99,10 +111,12 @@ app.get("/caixa", auth, (req, res) => {
             return res.send("Erro no caixa")
         }
 
-        res.render("caixa", { caixa: caixa || null })
+        res.render("caixa", {
+            caixa: caixa || null,
+            user: req.session.user
+        })
 
     })
-
 })
 
 app.post("/abrir-caixa", (req, res) => {

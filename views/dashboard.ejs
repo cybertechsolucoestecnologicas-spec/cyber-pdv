@@ -3,35 +3,23 @@
 <div class="cards">
 
     <div class="card">
-        <h2><%= totalProdutos || 0 %></h2>
-        <p>Produtos</p>
+        <h2>R$ 0</h2>
+        <p>Vendas Hoje</p>
     </div>
 
     <div class="card">
-        <h2>R$ <%= (totalVendas || 0).toFixed(2) %></h2>
-        <p>Vendas</p>
+        <h2>1</h2>
+        <p>Usuário Ativo</p>
     </div>
 
     <div class="card">
-        <h2><%= (estoqueBaixo || []).length %></h2>
-        <p>Estoque Baixo</p>
+        <h2>0</h2>
+        <p>Caixa Aberto</p>
     </div>
 
 </div>
 
-<h2>Estoque baixo</h2>
-
-<table>
-<tr>
-<th>Produto</th>
-<th>Qtd</th>
-</tr>
-
-<% (estoqueBaixo || []).forEach(p => { %>
-<tr>
-<td><%= p.nome %></td>
-<td class="low"><%= p.quantidade %></td>
-</tr>
-<% }) %>
-
-</table>
+<div class="box">
+    <h3>Bem-vindo, <%= user %> 👋</h3>
+    <p>Sistema PDV online funcionando perfeitamente 🚀</p>
+</div>
