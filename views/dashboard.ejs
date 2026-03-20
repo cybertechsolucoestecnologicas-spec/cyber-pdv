@@ -13,13 +13,30 @@
     </div>
 
     <div class="card">
-        <h2>0</h2>
+        <h2>1</h2>
         <p>Caixa Aberto</p>
     </div>
 
 </div>
 
 <div class="box">
-    <h3>Bem-vindo, <%= user %> 👋</h3>
-    <p>Sistema PDV online funcionando perfeitamente 🚀</p>
+    <h3>📈 Vendas da Semana</h3>
+    <canvas id="grafico"></canvas>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const ctx = document.getElementById('grafico');
+
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'],
+        datasets: [{
+            label: 'Vendas (R$)',
+            data: [120, 90, 150, 80, 200, 170, 220]
+        }]
+    }
+});
+</script>
