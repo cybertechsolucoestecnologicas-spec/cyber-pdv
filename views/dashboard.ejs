@@ -1,124 +1,59 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard - Cyber PDV</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-            padding: 0;
-        }
-
-        header {
-            background: #1f1f1f;
-            padding: 12px 20px;
-            color: #00ff84;
-            font-size: 22px;
-            font-weight: bold;
-        }
-
-        .topbar {
-            background: #333;
-            padding: 10px 20px;
-            display: flex;
-            gap: 20px;
-        }
-
-        .topbar a {
-            color: white;
-            text-decoration: none;
-            font-size: 16px;
-        }
-
-        .container {
-            padding: 25px;
-        }
-
-        .cards {
-            display: flex;
-            gap: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            width: 200px;
-        }
-
-        .card h2 {
-            margin: 0;
-            color: #333;
-        }
-
-        .card p {
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .box {
-            margin-top: 35px;
-            padding: 25px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-        }
-    </style>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-<header>💻 Cyber PDV</header>
-
 <div class="topbar">
-    <a href="/dashboard">📊 Dashboard</a>
-    <a href="/caixa">💰 Caixa</a>
-    <a href="/logout">🚪 Sair</a>
+    <h1>🏪 Cyber PDV — Dashboard</h1>
+    <div class="user">👤 <%= user.usuario %></div>
 </div>
 
-<div class="container">
-    <h1>Dashboard</h1>
-
-    <div class="cards">
-        <div class="card">
-            <h2>R$ 0,00</h2>
-            <p>Vendas Hoje</p>
-        </div>
-        <div class="card">
-            <h2>1</h2>
-            <p>Usuário Ativo</p>
-        </div>
-        <div class="card">
-            <h2><%= caixa ? 'Aberto' : 'Fechado' %></h2>
-            <p>Status do Caixa</p>
-        </div>
+<div class="cards">
+    <div class="card">
+        <h3>Vendas Hoje</h3>
+        <p>R$ <%= totalHoje %></p>
     </div>
 
-    <div class="box">
-        <h3>📈 Vendas da Semana</h3>
-        <canvas id="grafico"></canvas>
+    <div class="card">
+        <h3>Total de Produtos</h3>
+        <p><%= totalProdutos %></p>
+    </div>
+
+    <div class="card warning">
+        <h3>Estoque Baixo</h3>
+        <p><%= baixoEstoque.length %> itens</p>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<h2>📊 Vendas últimos 7 dias</h2>
+<canvas id="chart" height="100"></canvas>
 
 <script>
-const ctx = document.getElementById('grafico');
-
-new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'],
+fetch("/grafico-vendas")
+  .then(r => r.json())
+  .then(dados => {
+    new Chart(document.getElementById("chart"), {
+      type: "line",
+      data: {
+        labels: dados.map(x => x.dia),
         datasets: [{
-            label: 'Vendas (R$)',
-            data: [120, 90, 150, 80, 200, 170, 220],
-            borderWidth: 1
+          label: "Vendas (R$)",
+          data: dados.map(x => x.total),
+          borderWidth: 2
         }]
-    }
-});
+      }
+    });
+  });
 </script>
+
+<a href="/caixa" class="btn">💰 Ir para o Caixa</a>
+<a href="/logout" class="btn red">Sair</a>
 
 </body>
 </html>

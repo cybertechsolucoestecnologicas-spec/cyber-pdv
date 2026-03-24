@@ -1,73 +1,114 @@
+require('dotenv').config();
 const express = require("express");
-const session = require("express-session");
 const path = require("path");
+const mysql = require("mysql2");
+const bodyParser = require("body-parser");
+const session = require("express-session");
 
 const app = express();
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
 
-// Sessão (necessária para login)
-app.use(
-    session({
-        secret: "cyberpdv123",
-        resave: false,
-        saveUninitialized: true,
-    })
-);
-
-// Views (EJS)
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+app.use(express.static(path.join(__dirname, "public")));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
 
-// Rota inicial
-app.get("/", (req, res) => {
-    res.redirect("/login");
+// Sessão
+app.use(
+  session({
+    secret: "supersecretkey",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+
+// Banco de dados
+const db = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
 });
 
-// Login
-app.get("/login", (req, res) => {
-    res.render("login");
+// Middleware para proteger rotas
+function auth(req, res, next) {
+  if (!req.session.user) {
+    return res.redirect("/");
+  }
+  next();
+}
+
+// LOGIN
+app.get("/", (req, res) => {
+  res.render("login");
 });
 
 app.post("/login", (req, res) => {
-    const { usuario, senha } = req.body;
+  const { usuario, senha } = req.body;
 
-    if (usuario === "admin" && senha === "123") {
-        req.session.logado = true;
+  db.query(
+    "SELECT * FROM usuarios WHERE usuario=? AND senha=?",
+    [usuario, senha],
+    (err, results) => {
+      if (results.length > 0) {
+        req.session.user = results[0];
         return res.redirect("/dashboard");
+      }
+      res.send("Usuário ou senha inválidos");
     }
-
-    res.send("Usuário ou senha inválidos.");
+  );
 });
 
-// Middleware de proteção
-function auth(req, res, next) {
-    if (!req.session.logado) return res.redirect("/login");
-    next();
-}
-
-// Dashboard
+// DASHBOARD
 app.get("/dashboard", auth, (req, res) => {
-    res.render("dashboard", { caixa: true });
+  db.query("SELECT COUNT(*) AS totalProdutos FROM produtos", (err, produtos) => {
+    db.query(
+      "SELECT COUNT(*) AS vendasHoje, SUM(total) AS totalHoje FROM vendas WHERE DATE(data)=CURDATE()",
+      (err, vendas) => {
+        db.query(
+          "SELECT nome, estoque FROM produtos WHERE estoque <= 5",
+          (err, baixoEstoque) => {
+            res.render("dashboard", {
+              user: req.session.user,
+              totalProdutos: produtos[0].totalProdutos,
+              vendasHoje: vendas[0].vendasHoje || 0,
+              totalHoje: vendas[0].totalHoje || 0,
+              baixoEstoque,
+            });
+          }
+        );
+      }
+    );
+  });
 });
 
-// Caixa
+// GRÁFICO 7 DIAS
+app.get("/grafico-vendas", auth, (req, res) => {
+  db.query(
+    `
+    SELECT DATE(data) AS dia, SUM(total) AS total
+    FROM vendas
+    GROUP BY DATE(data)
+    ORDER BY dia DESC LIMIT 7
+    `,
+    (err, result) => {
+      res.json(result.reverse());
+    }
+  );
+});
+
+// CAIXA
 app.get("/caixa", auth, (req, res) => {
-    res.render("caixa", { aberto: true, valorInicial: 100 });
+  res.render("caixa");
 });
 
-// Logout
+// LOGOUT
 app.get("/logout", (req, res) => {
-    req.session.destroy(() => {
-        res.redirect("/login");
-    });
+  req.session.destroy();
+  res.redirect("/");
 });
 
-// Arquivos estáticos (css, js, imagens)
-app.use(express.static("public"));
-
-// Porta Render
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log("Servidor rodando na porta " + PORT);
-});
+// Render port
+app.listen(process.env.PORT || 3000, () =>
+  console.log("🚀 Server rodando!")
+);
