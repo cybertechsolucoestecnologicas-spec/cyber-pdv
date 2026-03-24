@@ -1,27 +1,105 @@
-<h1>📊 Dashboard</h1>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Cyber PDV</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 0;
+        }
 
-<div class="cards">
+        header {
+            background: #1f1f1f;
+            padding: 12px 20px;
+            color: #00ff84;
+            font-size: 22px;
+            font-weight: bold;
+        }
 
-    <div class="card">
-        <h2>R$ 0</h2>
-        <p>Vendas Hoje</p>
-    </div>
+        .topbar {
+            background: #333;
+            padding: 10px 20px;
+            display: flex;
+            gap: 20px;
+        }
 
-    <div class="card">
-        <h2>1</h2>
-        <p>Usuário Ativo</p>
-    </div>
+        .topbar a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+        }
 
-    <div class="card">
-        <h2>1</h2>
-        <p>Caixa Aberto</p>
-    </div>
+        .container {
+            padding: 25px;
+        }
 
+        .cards {
+            display: flex;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            width: 200px;
+        }
+
+        .card h2 {
+            margin: 0;
+            color: #333;
+        }
+
+        .card p {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .box {
+            margin-top: 35px;
+            padding: 25px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+
+<header>💻 Cyber PDV</header>
+
+<div class="topbar">
+    <a href="/dashboard">📊 Dashboard</a>
+    <a href="/caixa">💰 Caixa</a>
+    <a href="/logout">🚪 Sair</a>
 </div>
 
-<div class="box">
-    <h3>📈 Vendas da Semana</h3>
-    <canvas id="grafico"></canvas>
+<div class="container">
+    <h1>Dashboard</h1>
+
+    <div class="cards">
+        <div class="card">
+            <h2>R$ 0,00</h2>
+            <p>Vendas Hoje</p>
+        </div>
+        <div class="card">
+            <h2>1</h2>
+            <p>Usuário Ativo</p>
+        </div>
+        <div class="card">
+            <h2><%= caixa ? 'Aberto' : 'Fechado' %></h2>
+            <p>Status do Caixa</p>
+        </div>
+    </div>
+
+    <div class="box">
+        <h3>📈 Vendas da Semana</h3>
+        <canvas id="grafico"></canvas>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -35,8 +113,12 @@ new Chart(ctx, {
         labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'],
         datasets: [{
             label: 'Vendas (R$)',
-            data: [120, 90, 150, 80, 200, 170, 220]
+            data: [120, 90, 150, 80, 200, 170, 220],
+            borderWidth: 1
         }]
     }
 });
 </script>
+
+</body>
+</html>

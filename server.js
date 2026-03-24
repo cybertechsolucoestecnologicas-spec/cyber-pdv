@@ -1,168 +1,73 @@
-const express = require("express")
-const sqlite3 = require("sqlite3").verbose()
-const path = require("path")
-const session = require("express-session")
-const expressLayouts = require("express-ejs-layouts")
+const express = require("express");
+const session = require("express-session");
+const path = require("path");
 
-const app = express()
+const app = express();
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-/* ================= CONFIG ================= */
+// Sessão (necessária para login)
+app.use(
+    session({
+        secret: "cyberpdv123",
+        resave: false,
+        saveUninitialized: true,
+    })
+);
 
-app.use(express.urlencoded({ extended: true }))
-app.use(express.json())
+// Views (EJS)
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
 
-app.set("view engine", "ejs")
-app.set("views", path.join(__dirname, "views"))
+// Rota inicial
+app.get("/", (req, res) => {
+    res.redirect("/login");
+});
 
-app.use(express.static("public"))
-
-/* LAYOUT */
-app.use(expressLayouts)
-app.set("layout", "layout")
-
-/* ================= SESSION ================= */
-
-app.use(session({
-    secret: "cyberpdv",
-    resave: false,
-    saveUninitialized: false
-}))
-
-/* ================= DATABASE ================= */
-
-const db = new sqlite3.Database("./database/pdv.db")
-
-db.serialize(() => {
-
-    db.run(`CREATE TABLE IF NOT EXISTS usuarios(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario TEXT,
-        senha TEXT
-    )`)
-
-    db.run(`CREATE TABLE IF NOT EXISTS caixa(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        valor_inicial REAL,
-        valor_final REAL,
-        data_abertura DATETIME DEFAULT CURRENT_TIMESTAMP,
-        data_fechamento DATETIME
-    )`)
-
-    db.run(`
-        INSERT INTO usuarios(usuario,senha)
-        SELECT 'admin','1234'
-        WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE usuario='admin')
-    `)
-})
-
-/* ================= MIDDLEWARE ================= */
-
-function auth(req, res, next) {
-    if (!req.session.user) {
-        return res.redirect("/login")
-    }
-    next()
-}
-
-/* ================= ROTAS ================= */
-
-app.get("/", (req, res) => res.redirect("/login"))
-
-/* LOGIN */
-
+// Login
 app.get("/login", (req, res) => {
-    res.render("login", { layout: false })
-})
+    res.render("login");
+});
 
 app.post("/login", (req, res) => {
+    const { usuario, senha } = req.body;
 
-    const { usuario, senha } = req.body
+    if (usuario === "admin" && senha === "123") {
+        req.session.logado = true;
+        return res.redirect("/dashboard");
+    }
 
-    db.get("SELECT * FROM usuarios WHERE usuario=? AND senha=?",
-        [usuario, senha],
-        (err, user) => {
+    res.send("Usuário ou senha inválidos.");
+});
 
-            if (!user) return res.send("Login inválido")
+// Middleware de proteção
+function auth(req, res, next) {
+    if (!req.session.logado) return res.redirect("/login");
+    next();
+}
 
-            req.session.user = user.usuario
-            res.redirect("/dashboard")
-        })
-})
-
-app.get("/logout", (req, res) => {
-    req.session.destroy()
-    res.redirect("/login")
-})
-
-/* DASHBOARD */
-
+// Dashboard
 app.get("/dashboard", auth, (req, res) => {
-    res.render("dashboard", { user: req.session.user })
-})
+    res.render("dashboard", { caixa: true });
+});
 
-/* ================= CAIXA ================= */
-
+// Caixa
 app.get("/caixa", auth, (req, res) => {
+    res.render("caixa", { aberto: true, valorInicial: 100 });
+});
 
-    db.get("SELECT * FROM caixa WHERE data_fechamento IS NULL", (err, caixa) => {
+// Logout
+app.get("/logout", (req, res) => {
+    req.session.destroy(() => {
+        res.redirect("/login");
+    });
+});
 
-        if (err) {
-            console.log(err)
-            return res.send("Erro no caixa")
-        }
+// Arquivos estáticos (css, js, imagens)
+app.use(express.static("public"));
 
-        res.render("caixa", {
-            caixa: caixa || null,
-            user: req.session.user
-        })
-
-    })
-})
-
-app.post("/abrir-caixa", (req, res) => {
-
-    const valor = parseFloat(req.body.valor) || 0
-
-    db.run("INSERT INTO caixa(valor_inicial) VALUES(?)",
-        [valor],
-        () => res.redirect("/caixa")
-    )
-})
-
-app.post("/fechar-caixa", (req, res) => {
-
-    db.get("SELECT * FROM caixa WHERE data_fechamento IS NULL", (err, caixa) => {
-
-        if (!caixa) return res.redirect("/caixa")
-
-        const valorFinal = caixa.valor_inicial
-
-        db.run(
-            "UPDATE caixa SET valor_final=?, data_fechamento=CURRENT_TIMESTAMP WHERE id=?",
-            [valorFinal, caixa.id],
-            () => {
-
-                res.send(`
-                <h2>Caixa fechado!</h2>
-                <p>Valor final: R$ ${valorFinal.toFixed(2)}</p>
-                <a href="/dashboard">Voltar</a>
-                `)
-
-            }
-        )
-    })
-})
-
-/* TESTE */
-
-app.get("/teste", (req, res) => {
-    res.send("OK ONLINE 🚀")
-})
-
-/* SERVER */
-
-const PORT = process.env.PORT || 3000
-
+// Porta Render
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log("🚀 Rodando na porta " + PORT)
-})
+    console.log("Servidor rodando na porta " + PORT);
+});
