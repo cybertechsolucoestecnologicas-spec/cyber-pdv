@@ -9,26 +9,42 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.set("view engine", "ejs");
 
-// BANCO JSON
-const DB = "db.json";
+// ======================
+// BANCO (JSON)
+// ======================
+const DB_FILE = "db.json";
 
-if (!fs.existsSync(DB)) {
-    fs.writeFileSync(DB, JSON.stringify({ produtos: [], vendas: [] }));
+if (!fs.existsSync(DB_FILE)) {
+    fs.writeFileSync(DB_FILE, JSON.stringify({
+        produtos: [],
+        vendas: []
+    }, null, 2));
 }
 
-function readDB(){
-    return JSON.parse(fs.readFileSync(DB));
+function readDB() {
+    return JSON.parse(fs.readFileSync(DB_FILE));
 }
 
-function writeDB(data){
-    fs.writeFileSync(DB, JSON.stringify(data, null, 2));
+function writeDB(data) {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
+// ======================
 // ROTAS
+// ======================
 
-app.get("/", (req, res) => res.render("dashboard"));
+// DASHBOARD
+app.get("/", (req, res) => {
+    const db = readDB();
 
+    const total = db.vendas.reduce((soma, v) => soma + v.total, 0);
+
+    res.render("dashboard", { total });
+});
+
+// ======================
 // PRODUTOS
+// ======================
 app.get("/produtos", (req, res) => {
     const db = readDB();
     res.render("produtos", { produtos: db.produtos });
@@ -38,6 +54,7 @@ app.post("/produtos", (req, res) => {
     const db = readDB();
 
     db.produtos.push({
+        id: Date.now(),
         nome: req.body.nome,
         preco: Number(req.body.preco)
     });
@@ -46,7 +63,9 @@ app.post("/produtos", (req, res) => {
     res.redirect("/produtos");
 });
 
+// ======================
 // PDV
+// ======================
 app.get("/pdv", (req, res) => {
     const db = readDB();
     res.render("pdv", { produtos: db.produtos });
@@ -64,10 +83,30 @@ app.post("/venda", (req, res) => {
     res.redirect("/");
 });
 
-// OUTROS
-app.get("/caixa", (req, res) => res.render("caixa"));
-app.get("/login", (req, res) => res.render("login"));
+// ======================
+// RELATÓRIO
+// ======================
+app.get("/relatorio", (req, res) => {
+    const db = readDB();
+    res.render("relatorio", { vendas: db.vendas });
+});
 
+// ======================
+// OUTRAS
+// ======================
+app.get("/caixa", (req, res) => {
+    res.render("caixa");
+});
+
+app.get("/login", (req, res) => {
+    res.render("login");
+});
+
+// ======================
+// START
+// ======================
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => console.log("🚀 PDV REAL"));
+app.listen(PORT, () => {
+    console.log("🚀 PDV COMPLETO RODANDO");
+});

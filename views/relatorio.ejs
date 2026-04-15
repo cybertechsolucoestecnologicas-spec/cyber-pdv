@@ -1,28 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Relatório</title>
-</head>
-<body>
+<link rel="stylesheet" href="/css/style.css">
 
-<h1>📊 Relatório de Vendas</h1>
+<div class="topo">
+    <h2>💻 Cyber PDV</h2>
+    <div class="menu">
+        <a href="/">Dashboard</a>
+        <a href="/pdv">PDV</a>
+        <a href="/produtos">Produtos</a>
+    </div>
+</div>
 
-<table border="1">
-<tr>
-<th>Data</th>
-<th>Total</th>
-</tr>
+<div class="container">
 
-<% dados.forEach(d => { %>
-<tr>
-<td><%= d.dia %></td>
-<td>R$ <%= d.total %></td>
-</tr>
+<div class="card">
+<h2>Relatório de Vendas</h2>
+
+<ul>
+<% vendas.forEach(v => { %>
+<li>R$ <%= v.total %> - <%= v.data %></li>
 <% }) %>
+</ul>
 
-</table>
+</div>
 
-<a href="/">Voltar</a>
-
-</body>
-</html>
+</div>
