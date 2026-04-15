@@ -10,33 +10,29 @@
 </div>
 
 <div class="container">
-
 <div class="card">
+
 <h2>PDV</h2>
 
-<input id="busca" placeholder="Digite o produto e pressione ENTER">
+<input id="busca" placeholder="Digite produto e ENTER">
 
 <ul id="lista"></ul>
 
 <h2>Total: R$ <span id="total">0</span></h2>
 
-<form method="POST" action="/venda" onsubmit="finalizar()">
+<form method="POST" action="/venda" onsubmit="return finalizar()">
     <input type="hidden" name="total" id="totalInput">
     <button type="submit">Finalizar Venda</button>
 </form>
 
 </div>
-
 </div>
 
 <script>
 const produtos = <%- JSON.stringify(produtos) %>;
-
 let total = 0;
 
-// DIGITAR PRODUTO
 document.getElementById("busca").addEventListener("keyup", function(e){
-
     if(e.key === "Enter"){
 
         let nome = this.value.toLowerCase();
@@ -49,7 +45,7 @@ document.getElementById("busca").addEventListener("keyup", function(e){
             return;
         }
 
-        total += produto.preco;
+        total += Number(produto.preco);
 
         document.getElementById("total").innerText = total;
 
@@ -62,8 +58,8 @@ document.getElementById("busca").addEventListener("keyup", function(e){
     }
 });
 
-// FINALIZAR VENDA (CORRIGIDO)
 function finalizar(){
     document.getElementById("totalInput").value = total;
+    return true;
 }
 </script>

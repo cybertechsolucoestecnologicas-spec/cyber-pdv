@@ -1,13 +1,5 @@
 <link rel="stylesheet" href="/css/style.css">
 
-<div class="topo">
-    <h2>💻 Cyber PDV</h2>
-    <div class="menu">
-        <a href="/">Dashboard</a>
-        <a href="/pdv">PDV</a>
-    </div>
-</div>
-
 <div class="container">
 
 <div class="card">
@@ -18,15 +10,18 @@
 <input name="preco" placeholder="Preço">
 <button>Salvar</button>
 </form>
+
 </div>
 
 <div class="card">
 <h2>Lista</h2>
+
 <ul>
 <% produtos.forEach(p => { %>
 <li><%= p.nome %> - R$ <%= p.preco %></li>
 <% }) %>
 </ul>
+
 </div>
 
 </div>
