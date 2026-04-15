@@ -1,34 +1,24 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Caixa</title>
-</head>
-<body style="background:#0f172a;color:white;padding:20px">
+<link rel="stylesheet" href="/css/caixa.css">
 
-    <h1>💰 Caixa</h1>
+<div class="container">
+<div class="card">
 
-    <% if (!caixa) { %>
+<% if (!caixa) { %>
 
-        <h2>Abrir Caixa</h2>
-        <form method="POST" action="/caixa/abrir">
-            <input name="valor" placeholder="Saldo inicial" required>
-            <button>Abrir Caixa</button>
-        </form>
+<form method="POST" action="/caixa/abrir">
+<input name="valor" placeholder="Valor inicial">
+<button>Abrir</button>
+</form>
 
-    <% } else { %>
+<% } else { %>
 
-        <h2>Caixa Aberto</h2>
+<p>Saldo: R$ <%= caixa %></p>
 
-        <p>Saldo inicial: R$ <%= caixa.saldo_inicial %></p>
+<form method="POST" action="/caixa/fechar">
+<button>Fechar</button>
+</form>
 
-        <form method="POST" action="/caixa/fechar">
-            <button>Fechar Caixa</button>
-        </form>
+<% } %>
 
-    <% } %>
-
-    <br>
-    <a href="/">⬅ Voltar</a>
-
-</body>
-</html>
+</div>
+</div>

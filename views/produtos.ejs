@@ -1,21 +1,21 @@
-<h1>Produtos</h1>
+<link rel="stylesheet" href="/css/caixa.css">
 
-<form method="POST" action="/produtos/add">
-    <input name="nome" placeholder="Nome" required>
-    <input name="codigo" placeholder="Código" required>
-    <input name="preco" placeholder="Preço" required>
-    <input name="estoque" placeholder="Estoque" required>
-    <button type="submit">Cadastrar</button>
+<div class="container">
+
+<div class="card">
+<form method="POST">
+<input name="nome" placeholder="Nome">
+<input name="preco" placeholder="Preço">
+<button>Salvar</button>
 </form>
+</div>
 
-<hr>
-
+<div class="card">
 <ul>
-    <% produtos.forEach(p => { %>
-        <li>
-            <%= p.nome %> | Código: <%= p.codigo %> | R$ <%= p.preco %> | Estoque: <%= p.estoque %>
-        </li>
-    <% }) %>
+<% produtos.forEach(p => { %>
+<li><%= p.nome %> - R$ <%= p.preco %></li>
+<% }) %>
 </ul>
+</div>
 
-<a href="/dashboard">Voltar</a>
+</div>

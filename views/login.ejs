@@ -1,24 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Login</title>
-<style>
-body { background:#0d0d0d; color:#fff; font-family:Arial; display:flex; justify-content:center; align-items:center; height:100vh;}
-.box { background:#1a1a1a; padding:30px; border-radius:10px; width:300px;}
-input,button { width:100%; padding:10px; margin:10px 0; border:none; border-radius:5px;}
-button { background:#00c853; color:#fff;}
-</style>
-</head>
-<body>
+<link rel="stylesheet" href="/css/caixa.css">
 
-<div class="box">
-<h2>🔐 Login PDV</h2>
-<form method="POST" action="/login">
-<input name="usuario" placeholder="Usuário" required>
-<input type="password" name="senha" placeholder="Senha" required>
+<div class="container">
+<div class="card">
+<h2>Login</h2>
+
+<form method="POST">
+<input name="usuario" placeholder="Usuário">
+<input type="password" name="senha" placeholder="Senha">
 <button>Entrar</button>
 </form>
-</div>
 
-</body>
-</html>
+</div>
+</div>

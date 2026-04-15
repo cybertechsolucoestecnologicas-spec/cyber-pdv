@@ -5,6 +5,9 @@ const fs = require("fs");
 const app = express();
 
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static("public"));
+
+app.set("view engine", "ejs");
 
 app.use(session({
     secret: "pdv",
@@ -12,14 +15,15 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// 🔥 BANCO SIMPLES (JSON)
+// BANCO JSON
 const DB_FILE = "db.json";
 
 if (!fs.existsSync(DB_FILE)) {
     fs.writeFileSync(DB_FILE, JSON.stringify({
         usuarios: [{ usuario: "admin", senha: "123" }],
+        produtos: [],
         caixa: null
-    }));
+    }, null, 2));
 }
 
 function readDB() {
@@ -30,17 +34,14 @@ function writeDB(data) {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
+// AUTH
+function auth(req, res, next) {
+    if (!req.session.user) return res.redirect("/login");
+    next();
+}
+
 // LOGIN
-app.get("/login", (req, res) => {
-    res.send(`
-    <h2>Login</h2>
-    <form method="POST">
-        <input name="usuario"><br><br>
-        <input name="senha" type="password"><br><br>
-        <button>Entrar</button>
-    </form>
-    `);
-});
+app.get("/login", (req, res) => res.render("login"));
 
 app.post("/login", (req, res) => {
     const { usuario, senha } = req.body;
@@ -56,64 +57,59 @@ app.post("/login", (req, res) => {
     }
 });
 
-// DASHBOARD
-app.get("/", (req, res) => {
-    if (!req.session.user) return res.redirect("/login");
+app.get("/logout", (req, res) => {
+    req.session.destroy();
+    res.redirect("/login");
+});
 
-    res.send(`
-    <h1>Dashboard</h1>
-    <a href="/caixa">Caixa</a><br><br>
-    <a href="/logout">Sair</a>
-    `);
+// DASHBOARD
+app.get("/", auth, (req, res) => res.render("dashboard"));
+
+// PRODUTOS
+app.get("/produtos", auth, (req, res) => {
+    const db = readDB();
+    res.render("produtos", { produtos: db.produtos });
+});
+
+app.post("/produtos", auth, (req, res) => {
+    const db = readDB();
+
+    db.produtos.push({
+        nome: req.body.nome,
+        preco: Number(req.body.preco)
+    });
+
+    writeDB(db);
+    res.redirect("/produtos");
 });
 
 // CAIXA
-app.get("/caixa", (req, res) => {
-    if (!req.session.user) return res.redirect("/login");
-
+app.get("/caixa", auth, (req, res) => {
     const db = readDB();
-
-    if (!db.caixa) {
-        return res.send(`
-        <h1>Abrir Caixa</h1>
-        <form method="POST" action="/caixa/abrir">
-            <input name="valor">
-            <button>Abrir</button>
-        </form>
-        `);
-    }
-
-    res.send(`
-        <h1>Caixa Aberto</h1>
-        <p>Saldo: ${db.caixa}</p>
-        <form method="POST" action="/caixa/fechar">
-            <button>Fechar</button>
-        </form>
-    `);
+    res.render("caixa", { caixa: db.caixa });
 });
 
-app.post("/caixa/abrir", (req, res) => {
+app.post("/caixa/abrir", auth, (req, res) => {
     const db = readDB();
-    db.caixa = req.body.valor;
+    db.caixa = Number(req.body.valor);
     writeDB(db);
     res.redirect("/caixa");
 });
 
-app.post("/caixa/fechar", (req, res) => {
+app.post("/caixa/fechar", auth, (req, res) => {
     const db = readDB();
     db.caixa = null;
     writeDB(db);
     res.redirect("/caixa");
 });
 
-app.get("/logout", (req, res) => {
-    req.session.destroy();
-    res.redirect("/login");
+// PDV
+app.get("/pdv", auth, (req, res) => {
+    const db = readDB();
+    res.render("pdv", { produtos: db.produtos });
 });
 
 // START
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-    console.log("🚀 Sistema rodando");
-});
+app.listen(PORT, () => console.log("🚀 PDV rodando"));
