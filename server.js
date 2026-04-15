@@ -15,28 +15,33 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// 🔥 CONEXÃO MYSQL (COM SSL + DEBUG)
+// ================= CONEXÃO MYSQL (RENDER + RAILWAY) =================
+
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
-    port: 3306,
+    port: process.env.DB_PORT || 3306,
     ssl: {
         rejectUnauthorized: false
-    }
+    },
+    connectTimeout: 10000
 });
 
-db.connect(err => {
+// TESTE DE CONEXÃO REAL
+db.connect((err) => {
     if (err) {
-        console.log("❌ ERRO REAL DO BANCO:");
-        console.log(err);
+        console.log("❌ ERRO AO CONECTAR NO BANCO:");
+        console.log(err.code);
+        console.log(err.message);
     } else {
-        console.log("✅ Banco conectado com sucesso");
+        console.log("✅ BANCO CONECTADO COM SUCESSO");
     }
 });
 
-// 🔒 AUTH
+// ================= AUTH =================
+
 function auth(req, res, next) {
     if (!req.session.user) return res.redirect("/login");
     next();
@@ -89,10 +94,8 @@ app.get("/logout", (req, res) => {
 app.get("/", auth, (req, res) => {
     res.send(`
     <h1>Dashboard</h1>
-    <a href="/caixa">Caixa</a><br>
-    <a href="/venda">PDV</a><br>
-    <a href="/produtos">Produtos</a><br>
-    <a href="/logout">Sair</a>
+    <a href="/caixa">💰 Caixa</a><br><br>
+    <a href="/logout">🚪 Sair</a>
     `);
 });
 
@@ -112,33 +115,38 @@ app.get("/caixa", auth, (req, res) => {
 
             if (!result || result.length === 0) {
                 return res.send(`
-                <h1>Abrir Caixa</h1>
+                <h1>💰 Abrir Caixa</h1>
                 <form method="POST" action="/caixa/abrir">
-                    <input name="valor" required>
+                    <input name="valor" required placeholder="Valor inicial">
                     <button>Abrir</button>
                 </form>
+                <br><a href="/">Voltar</a>
                 `);
             }
 
             res.send(`
-                <h1>Caixa Aberto</h1>
-                <p>Saldo: ${result[0].saldo_inicial}</p>
+                <h1>💰 Caixa Aberto</h1>
+                <p>Saldo inicial: R$ ${result[0].saldo_inicial}</p>
+
                 <form method="POST" action="/caixa/fechar">
                     <button>Fechar Caixa</button>
                 </form>
+
+                <br><a href="/">Voltar</a>
             `);
         }
     );
 });
 
 app.post("/caixa/abrir", auth, (req, res) => {
+
     db.query(
         "INSERT INTO caixa (empresa_id, saldo_inicial, status) VALUES (?, ?, 'aberto')",
         [req.session.empresa_id, req.body.valor],
-        err => {
+        (err) => {
             if (err) {
-                console.log(err);
-                return res.send("Erro ao abrir");
+                console.log("❌ ERRO ABRIR CAIXA:", err);
+                return res.send("Erro ao abrir caixa");
             }
             res.redirect("/caixa");
         }
@@ -146,11 +154,15 @@ app.post("/caixa/abrir", auth, (req, res) => {
 });
 
 app.post("/caixa/fechar", auth, (req, res) => {
+
     db.query(
-        "UPDATE caixa SET status='fechado' WHERE empresa_id=? AND status='aberto'",
+        "UPDATE caixa SET status='fechado', data_fechamento=NOW() WHERE empresa_id=? AND status='aberto'",
         [req.session.empresa_id],
-        err => {
-            if (err) return res.send("Erro ao fechar");
+        (err) => {
+            if (err) {
+                console.log("❌ ERRO FECHAR CAIXA:", err);
+                return res.send("Erro ao fechar caixa");
+            }
             res.redirect("/caixa");
         }
     );
@@ -161,5 +173,5 @@ app.post("/caixa/fechar", auth, (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log("🚀 Servidor rodando");
+    console.log("🚀 Servidor rodando na porta", PORT);
 });
