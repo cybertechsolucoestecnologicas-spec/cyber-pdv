@@ -1,24 +1,62 @@
 <link rel="stylesheet" href="/css/caixa.css">
 
 <div class="container">
-
 <div class="card">
-<h2>PDV</h2>
+
+<h2>🛒 PDV</h2>
+
+<input id="codigo" placeholder="Digite produto" autofocus>
 
 <ul id="lista"></ul>
 
-<h3>Total: R$ <span id="total">0</span></h3>
+<h2>Total: R$ <span id="total">0</span></h2>
 
-<% produtos.forEach(p => { %>
-<button onclick="addProduto('<%= p.nome %>', <%= p.preco %>)">
-<%= p.nome %>
-</button>
-<% }) %>
+<form method="POST" action="/finalizar">
+<input type="hidden" name="total" id="totalInput">
+<button onclick="finalizar()">Finalizar Venda</button>
+</form>
 
 </div>
-
 </div>
 
 <audio id="bip" src="https://www.soundjay.com/buttons/beep-01a.mp3"></audio>
 
-<script src="/js/pdv.js"></script>
+<script>
+const produtos = <%- JSON.stringify(produtos) %>;
+
+let total = 0;
+
+const input = document.getElementById("codigo");
+
+input.addEventListener("keyup", function(e) {
+    if (e.key === "Enter") {
+
+        const nome = input.value.toLowerCase();
+
+        const produto = produtos.find(p => p.nome.toLowerCase() === nome);
+
+        if (!produto) {
+            alert("Produto não encontrado");
+            input.value = "";
+            return;
+        }
+
+        total += produto.preco;
+
+        document.getElementById("total").innerText = total;
+
+        let li = document.createElement("li");
+        li.innerText = produto.nome + " - R$ " + produto.preco;
+
+        document.getElementById("lista").appendChild(li);
+
+        document.getElementById("bip").play();
+
+        input.value = "";
+    }
+});
+
+function finalizar() {
+    document.getElementById("totalInput").value = total;
+}
+</script>

@@ -15,14 +15,15 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// BANCO JSON
+// ===== BANCO JSON =====
 const DB_FILE = "db.json";
 
 if (!fs.existsSync(DB_FILE)) {
     fs.writeFileSync(DB_FILE, JSON.stringify({
         usuarios: [{ usuario: "admin", senha: "123" }],
         produtos: [],
-        caixa: null
+        caixa: null,
+        vendas: []
     }, null, 2));
 }
 
@@ -34,13 +35,13 @@ function writeDB(data) {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
-// AUTH
+// ===== AUTH =====
 function auth(req, res, next) {
     if (!req.session.user) return res.redirect("/login");
     next();
 }
 
-// LOGIN
+// ===== LOGIN =====
 app.get("/login", (req, res) => res.render("login"));
 
 app.post("/login", (req, res) => {
@@ -62,10 +63,10 @@ app.get("/logout", (req, res) => {
     res.redirect("/login");
 });
 
-// DASHBOARD
+// ===== DASHBOARD =====
 app.get("/", auth, (req, res) => res.render("dashboard"));
 
-// PRODUTOS
+// ===== PRODUTOS =====
 app.get("/produtos", auth, (req, res) => {
     const db = readDB();
     res.render("produtos", { produtos: db.produtos });
@@ -83,7 +84,7 @@ app.post("/produtos", auth, (req, res) => {
     res.redirect("/produtos");
 });
 
-// CAIXA
+// ===== CAIXA =====
 app.get("/caixa", auth, (req, res) => {
     const db = readDB();
     res.render("caixa", { caixa: db.caixa });
@@ -103,13 +104,26 @@ app.post("/caixa/fechar", auth, (req, res) => {
     res.redirect("/caixa");
 });
 
-// PDV
+// ===== PDV =====
 app.get("/pdv", auth, (req, res) => {
     const db = readDB();
     res.render("pdv", { produtos: db.produtos });
 });
 
-// START
+app.post("/finalizar", auth, (req, res) => {
+    const db = readDB();
+
+    db.vendas.push({
+        total: Number(req.body.total),
+        data: new Date()
+    });
+
+    writeDB(db);
+
+    res.send("Venda finalizada!");
+});
+
+// ===== START =====
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => console.log("🚀 PDV rodando"));
+app.listen(PORT, () => console.log("🚀 PDV ONLINE"));
