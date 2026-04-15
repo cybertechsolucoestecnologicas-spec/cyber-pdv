@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDV</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #0d0d0d;
+            color: #fff;
+        }
+
+        .top {
+            background: #111;
+            padding: 15px;
+            font-size: 22px;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .left {
+            width: 70%;
+            padding: 20px;
+        }
+
+        .right {
+            width: 30%;
+            background: #111;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 20px;
+            border: none;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 10px;
+            color: #aaa;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #222;
+        }
+
+        .total {
+            font-size: 40px;
+            text-align: right;
+            margin-top: 20px;
+        }
+
+        .finalizar {
+            background: #00c853;
+            border: none;
+            padding: 20px;
+            font-size: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .finalizar:hover {
+            background: #00e676;
+        }
+
+        select, .pago {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        .troco {
+            margin-top: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="top">🛒 PDV - Caixa</div>
+
+<div class="container">
+
+    <!-- ESQUERDA -->
+    <div class="left">
+
+        <input type="text" id="codigo" placeholder="Passe o código..." autofocus>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th>Qtd</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody id="lista"></tbody>
+        </table>
+
+    </div>
+
+    <!-- DIREITA -->
+    <div class="right">
+
+        <div>
+            <h2>Total</h2>
+            <div class="total">R$ <span id="total">0.00</span></div>
+
+            <select id="tipo">
+                <option value="dinheiro">Dinheiro</option>
+                <option value="pix">PIX</option>
+                <option value="cartao">Cartão</option>
+            </select>
+
+            <input type="number" id="pago" class="pago" placeholder="Valor pago">
+
+            <div class="troco">
+                Troco: R$ <span id="troco">0.00</span>
+            </div>
+        </div>
+
+        <button class="finalizar" onclick="finalizar()">FINALIZAR VENDA</button>
+
+    </div>
+
+</div>
+
+<audio id="bip" src="/bip.mp3"></audio>
+
+<script>
+let total = 0;
+let itens = [];
+
+document.getElementById("codigo").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+
+        fetch("/buscar-produto", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ codigo: this.value })
+        })
+        .then(r => r.json())
+        .then(p => {
+
+            if (p.erro) {
+                alert(p.erro);
+                return;
+            }
+
+            document.getElementById("bip").play();
+
+            let existente = itens.find(i => i.id === p.id);
+
+            if (existente) {
+                existente.qtd++;
+            } else {
+                itens.push({
+                    id: p.id,
+                    nome: p.nome,
+                    preco: parseFloat(p.preco),
+                    qtd: 1
+                });
+            }
+
+            render();
+        });
+
+        this.value = "";
+    }
+});
+
+function render() {
+    let html = "";
+    total = 0;
+
+    itens.forEach(item => {
+        let subtotal = item.preco * item.qtd;
+        total += subtotal;
+
+        html += `
+        <tr>
+            <td>${item.nome}</td>
+            <td>${item.qtd}</td>
+            <td>R$ ${subtotal.toFixed(2)}</td>
+        </tr>`;
+    });
+
+    document.getElementById("lista").innerHTML = html;
+    document.getElementById("total").innerText = total.toFixed(2);
+}
+
+function finalizar() {
+
+    const pago = parseFloat(document.getElementById("pago").value || 0);
+    const tipo = document.getElementById("tipo").value;
+
+    let troco = 0;
+
+    if (tipo === "dinheiro") {
+        if (pago < total) {
+            alert("Valor insuficiente!");
+            return;
+        }
+        troco = pago - total;
+    }
+
+    document.getElementById("troco").innerText = troco.toFixed(2);
+
+    fetch("/finalizar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itens, total, pago, troco, tipo })
+    })
+    .then(r => r.json())
+    .then(() => {
+        alert("Venda finalizada!");
+        location.reload();
+    });
+}
+</script>
+
+</body>
+</html>

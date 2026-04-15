@@ -1,59 +1,9 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard - Cyber PDV</title>
-    <link rel="stylesheet" href="/css/style.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
+<h1>DASHBOARD PDV</h1>
 
-<div class="topbar">
-    <h1>🏪 Cyber PDV — Dashboard</h1>
-    <div class="user">👤 <%= user.usuario %></div>
-</div>
+<p>Total vendido: R$ <%= total %></p>
+<p>Vendas: <%= vendas %></p>
+<p>Produtos: <%= produtos %></p>
 
-<div class="cards">
-    <div class="card">
-        <h3>Vendas Hoje</h3>
-        <p>R$ <%= totalHoje %></p>
-    </div>
-
-    <div class="card">
-        <h3>Total de Produtos</h3>
-        <p><%= totalProdutos %></p>
-    </div>
-
-    <div class="card warning">
-        <h3>Estoque Baixo</h3>
-        <p><%= baixoEstoque.length %> itens</p>
-    </div>
-</div>
-
-<h2>📊 Vendas últimos 7 dias</h2>
-<canvas id="chart" height="100"></canvas>
-
-<script>
-fetch("/grafico-vendas")
-  .then(r => r.json())
-  .then(dados => {
-    new Chart(document.getElementById("chart"), {
-      type: "line",
-      data: {
-        labels: dados.map(x => x.dia),
-        datasets: [{
-          label: "Vendas (R$)",
-          data: dados.map(x => x.total),
-          borderWidth: 2
-        }]
-      }
-    });
-  });
-</script>
-
-<a href="/caixa" class="btn">💰 Ir para o Caixa</a>
-<a href="/logout" class="btn red">Sair</a>
-
-</body>
-</html>
+<a href="/venda">Abrir PDV</a>
+<br>
+<a href="/produtos">Gerenciar Produtos</a>

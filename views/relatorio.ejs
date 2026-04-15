@@ -1,69 +1,28 @@
-<h1>📊 Relatório Financeiro</h1>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Relatório</title>
+</head>
+<body>
 
-<div class="cards">
+<h1>📊 Relatório de Vendas</h1>
 
-    <div class="card">
-        <h3>💰 Vendas Hoje</h3>
-        <h2>R$ <%= Number(hoje || 0).toFixed(2) %></h2>
-    </div>
+<table border="1">
+<tr>
+<th>Data</th>
+<th>Total</th>
+</tr>
 
-    <div class="card">
-        <h3>📅 Vendas do Mês</h3>
-        <h2>R$ <%= Number(mes || 0).toFixed(2) %></h2>
-    </div>
+<% dados.forEach(d => { %>
+<tr>
+<td><%= d.dia %></td>
+<td>R$ <%= d.total %></td>
+</tr>
+<% }) %>
 
-    <div class="card">
-        <h3>🧾 Total de Vendas</h3>
-        <h2><%= total || 0 %></h2>
-    </div>
-
-    <div class="card">
-        <h3>🏆 Produto Mais Vendido</h3>
-        <h2><%= top?.produto || "Nenhum" %></h2>
-    </div>
-
-</div>
-
-<br>
-
-<h2>📋 Histórico de Vendas</h2>
-
-<table>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Produto</th>
-            <th>Qtd</th>
-            <th>Total</th>
-            <th>Pagamento</th>
-            <th>Data</th>
-        </tr>
-    </thead>
-
-    <tbody>
-        <% if (vendas.length === 0) { %>
-            <tr>
-                <td colspan="6" style="text-align:center;">
-                    Nenhuma venda registrada
-                </td>
-            </tr>
-        <% } %>
-
-        <% vendas.forEach(v => { %>
-            <tr>
-                <td><%= v.id %></td>
-                <td><%= v.produto %></td>
-                <td><%= v.quantidade %></td>
-                <td>R$ <%= Number(v.total).toFixed(2) %></td>
-                <td><%= v.pagamento %></td>
-                <td><%= v.data %></td>
-            </tr>
-        <% }) %>
-    </tbody>
 </table>
 
-<br>
+<a href="/">Voltar</a>
 
-<button onclick="window.print()" class="btn btn-success">
-🖨️ Imprimir Relatório
-</button>
+</body>
+</html>
