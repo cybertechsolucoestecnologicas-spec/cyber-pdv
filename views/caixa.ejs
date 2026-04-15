@@ -1,24 +1,18 @@
-<link rel="stylesheet" href="/css/caixa.css">
+<link rel="stylesheet" href="/css/style.css">
+
+<div class="topo">
+    <h2>💻 Cyber PDV</h2>
+    <div class="menu">
+        <a href="/">Dashboard</a>
+        <a href="/pdv">PDV</a>
+        <a href="/produtos">Produtos</a>
+        <a href="/caixa">Caixa</a>
+    </div>
+</div>
 
 <div class="container">
-<div class="card">
-
-<% if (!caixa) { %>
-
-<form method="POST" action="/caixa/abrir">
-<input name="valor" placeholder="Valor inicial">
-<button>Abrir</button>
-</form>
-
-<% } else { %>
-
-<p>Saldo: R$ <%= caixa %></p>
-
-<form method="POST" action="/caixa/fechar">
-<button>Fechar</button>
-</form>
-
-<% } %>
-
-</div>
+    <div class="card">
+        <h2>Caixa</h2>
+        <p>Status: Aberto</p>
+    </div>
 </div>

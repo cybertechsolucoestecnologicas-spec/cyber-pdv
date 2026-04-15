@@ -10,12 +10,14 @@ body {
     padding: 15px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
 .menu a {
     color: #22c55e;
     margin-left: 15px;
     text-decoration: none;
+    font-weight: bold;
 }
 
 .container {
@@ -26,10 +28,18 @@ body {
     background: #1e293b;
     padding: 20px;
     border-radius: 10px;
-    margin-bottom: 15px;
 }
 
-input, button {
+input {
     padding: 10px;
-    margin: 5px;
+    margin: 5px 0;
+    width: 100%;
+}
+
+button {
+    padding: 10px;
+    background: #22c55e;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
 }
