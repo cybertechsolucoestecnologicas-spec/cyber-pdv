@@ -1,13 +1,15 @@
 const express = require("express");
 const session = require("express-session");
 const fs = require("fs");
+const path = require("path");
 
 const app = express();
 
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 
 app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
 
 app.use(session({
     secret: "pdv",
@@ -15,7 +17,7 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// ===== BANCO JSON =====
+// ===== DB JSON =====
 const DB_FILE = "db.json";
 
 if (!fs.existsSync(DB_FILE)) {
@@ -27,19 +29,14 @@ if (!fs.existsSync(DB_FILE)) {
     }, null, 2));
 }
 
-function readDB() {
-    return JSON.parse(fs.readFileSync(DB_FILE));
-}
-
-function writeDB(data) {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-}
+const readDB = () => JSON.parse(fs.readFileSync(DB_FILE));
+const writeDB = (d) => fs.writeFileSync(DB_FILE, JSON.stringify(d, null, 2));
 
 // ===== AUTH =====
-function auth(req, res, next) {
+const auth = (req, res, next) => {
     if (!req.session.user) return res.redirect("/login");
     next();
-}
+};
 
 // ===== LOGIN =====
 app.get("/login", (req, res) => res.render("login"));
@@ -50,12 +47,10 @@ app.post("/login", (req, res) => {
 
     const user = db.usuarios.find(u => u.usuario === usuario && u.senha === senha);
 
-    if (user) {
-        req.session.user = user;
-        res.redirect("/");
-    } else {
-        res.send("Login inválido");
-    }
+    if (!user) return res.send("Login inválido");
+
+    req.session.user = user;
+    res.redirect("/");
 });
 
 app.get("/logout", (req, res) => {
@@ -64,7 +59,15 @@ app.get("/logout", (req, res) => {
 });
 
 // ===== DASHBOARD =====
-app.get("/", auth, (req, res) => res.render("dashboard"));
+app.get("/", auth, (req, res) => {
+    const db = readDB();
+    const totalHoje = db.vendas.reduce((s, v) => s + v.total, 0);
+
+    res.render("dashboard", {
+        totalHoje,
+        caixa: db.caixa
+    });
+});
 
 // ===== PRODUTOS =====
 app.get("/produtos", auth, (req, res) => {
@@ -76,6 +79,7 @@ app.post("/produtos", auth, (req, res) => {
     const db = readDB();
 
     db.produtos.push({
+        id: Date.now(),
         nome: req.body.nome,
         preco: Number(req.body.preco)
     });
@@ -119,11 +123,15 @@ app.post("/finalizar", auth, (req, res) => {
     });
 
     writeDB(db);
+    res.redirect("/relatorio");
+});
 
-    res.send("Venda finalizada!");
+// ===== RELATÓRIO =====
+app.get("/relatorio", auth, (req, res) => {
+    const db = readDB();
+    res.render("relatorio", { vendas: db.vendas });
 });
 
 // ===== START =====
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => console.log("🚀 PDV ONLINE"));
+app.listen(PORT, () => console.log("🚀 PDV rodando"));
