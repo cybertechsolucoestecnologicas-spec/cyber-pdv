@@ -9,8 +9,6 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-app.set("trust proxy", 1);
-
 app.use(session({
     secret: "pdv",
     resave: false,
@@ -43,8 +41,8 @@ app.get("/login", (req, res) => {
     res.send(`
     <h2>Login PDV</h2>
     <form method="POST">
-        <input name="usuario"><br><br>
-        <input name="senha" type="password"><br><br>
+        <input name="usuario" placeholder="Usuário"><br><br>
+        <input name="senha" type="password" placeholder="Senha"><br><br>
         <button>Entrar</button>
     </form>
     `);
@@ -57,6 +55,8 @@ app.post("/login", (req, res) => {
         "SELECT * FROM usuarios WHERE usuario=? AND senha=?",
         [usuario, senha],
         (err, result) => {
+            if (err) return res.send("Erro no banco");
+
             if (result.length > 0) {
                 req.session.user = result[0];
                 req.session.empresa_id = result[0].empresa_id;
@@ -123,6 +123,8 @@ app.get("/produtos", auth, (req, res) => {
         [req.session.empresa_id],
         (err, produtos) => {
 
+            if (err) return res.send("Erro produtos");
+
             let lista = produtos.map(p =>
                 `<div>${p.nome} | ${p.codigo} | R$ ${p.preco} | Estoque: ${p.estoque}</div>`
             ).join("");
@@ -158,20 +160,18 @@ app.post("/produtos/add", auth, (req, res) => {
     );
 });
 
-// ================= CAIXA (CORRIGIDO) =================
+// ================= CAIXA =================
 
 app.get("/caixa", auth, (req, res) => {
 
-    const empresa = req.session.empresa_id;
-
     db.query(
         "SELECT * FROM caixa WHERE empresa_id=? AND status='aberto' LIMIT 1",
-        [empresa],
+        [req.session.empresa_id],
         (err, result) => {
 
             if (err) {
-                console.log("ERRO CAIXA:", err);
-                return res.send("Erro no banco (caixa)");
+                console.log(err);
+                return res.send("Erro no caixa");
             }
 
             if (!result || result.length === 0) {
@@ -202,15 +202,12 @@ app.get("/caixa", auth, (req, res) => {
 
 app.post("/caixa/abrir", auth, (req, res) => {
 
-    const empresa = req.session.empresa_id;
-    const valor = req.body.valor;
-
     db.query(
         "INSERT INTO caixa (empresa_id, saldo_inicial, status) VALUES (?, ?, 'aberto')",
-        [empresa, valor],
+        [req.session.empresa_id, req.body.valor],
         (err) => {
             if (err) {
-                console.log("ERRO ABRIR:", err);
+                console.log(err);
                 return res.send("Erro ao abrir caixa");
             }
 
@@ -221,29 +218,21 @@ app.post("/caixa/abrir", auth, (req, res) => {
 
 app.post("/caixa/fechar", auth, (req, res) => {
 
-    const empresa = req.session.empresa_id;
-
     db.query(
         "SELECT SUM(total) as total FROM vendas WHERE empresa_id=?",
-        [empresa],
+        [req.session.empresa_id],
         (err, vendas) => {
 
-            if (err) {
-                console.log("ERRO SOMA:", err);
-                return res.send("Erro ao calcular vendas");
-            }
+            if (err) return res.send("Erro soma vendas");
 
             const total = vendas[0].total || 0;
 
             db.query(
                 "UPDATE caixa SET saldo_final=?, status='fechado', data_fechamento=NOW() WHERE empresa_id=? AND status='aberto'",
-                [total, empresa],
+                [total, req.session.empresa_id],
                 (err) => {
 
-                    if (err) {
-                        console.log("ERRO FECHAR:", err);
-                        return res.send("Erro ao fechar caixa");
-                    }
+                    if (err) return res.send("Erro fechar caixa");
 
                     res.redirect("/caixa");
                 }
@@ -317,6 +306,8 @@ app.post("/api/venda", auth, (req, res) => {
         [total, req.session.empresa_id],
         (err, venda) => {
 
+            if (err) return res.send("Erro venda");
+
             const id = venda.insertId;
 
             itens.forEach(i=>{
@@ -343,6 +334,8 @@ app.get("/relatorio", auth, (req, res) => {
         "SELECT * FROM vendas WHERE empresa_id=? ORDER BY id DESC",
         [req.session.empresa_id],
         (err, vendas) => {
+
+            if (err) return res.send("Erro relatório");
 
             let html = "<h1>Relatório</h1>";
 
