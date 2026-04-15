@@ -8,6 +8,20 @@ body {
 .topo {
     background: #020617;
     padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.topo h2 {
+    margin: 0;
+}
+
+.menu a {
+    color: #22c55e;
+    margin-left: 15px;
+    text-decoration: none;
+    font-weight: bold;
 }
 
 .container {
@@ -18,10 +32,26 @@ body {
     background: #1e293b;
     padding: 20px;
     border-radius: 10px;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
-input, button {
-    padding: 10px;
-    margin: 5px;
+input {
+    padding: 12px;
+    width: 100%;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border: none;
+}
+
+button {
+    padding: 12px;
+    background: #22c55e;
+    border: none;
+    color: #000;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+li {
+    margin: 5px 0;
 }
