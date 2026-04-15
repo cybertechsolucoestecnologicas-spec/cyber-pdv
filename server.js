@@ -5,7 +5,6 @@ const sqlite3 = require("sqlite3").verbose();
 const app = express();
 
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
 
 app.use(session({
     secret: "pdv",
@@ -13,36 +12,16 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// 🔥 BANCO SQLITE (SEM ERRO)
+// BANCO LOCAL (SEM ERRO)
 const db = new sqlite3.Database("./pdv.db");
 
-// CRIA TABELAS AUTOMATICO
+// CRIA TABELAS
 db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario TEXT,
-        senha TEXT,
-        empresa_id INTEGER
-    )`);
+    db.run("CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY, usuario TEXT, senha TEXT)");
+    db.run("CREATE TABLE IF NOT EXISTS caixa (id INTEGER PRIMARY KEY, saldo REAL, status TEXT)");
 
-    db.run(`CREATE TABLE IF NOT EXISTS caixa (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        empresa_id INTEGER,
-        saldo_inicial REAL,
-        status TEXT
-    )`);
-
-    // cria usuário padrão
-    db.run(`INSERT INTO usuarios (usuario, senha, empresa_id)
-        SELECT 'admin', '123', 1
-        WHERE NOT EXISTS (SELECT 1 FROM usuarios)`);
+    db.run("INSERT INTO usuarios (usuario, senha) SELECT 'admin','123' WHERE NOT EXISTS (SELECT 1 FROM usuarios)");
 });
-
-// AUTH
-function auth(req, res, next) {
-    if (!req.session.user) return res.redirect("/login");
-    next();
-}
 
 // LOGIN
 app.get("/login", (req, res) => {
@@ -59,26 +38,20 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
     const { usuario, senha } = req.body;
 
-    db.get(
-        "SELECT * FROM usuarios WHERE usuario=? AND senha=?",
-        [usuario, senha],
-        (err, user) => {
-
-            if (err) return res.send("Erro no banco");
-
-            if (user) {
-                req.session.user = user;
-                req.session.empresa_id = user.empresa_id;
-                res.redirect("/");
-            } else {
-                res.send("Login inválido");
-            }
+    db.get("SELECT * FROM usuarios WHERE usuario=? AND senha=?", [usuario, senha], (err, user) => {
+        if (user) {
+            req.session.user = user;
+            res.redirect("/");
+        } else {
+            res.send("Login inválido");
         }
-    );
+    });
 });
 
 // DASHBOARD
-app.get("/", auth, (req, res) => {
+app.get("/", (req, res) => {
+    if (!req.session.user) return res.redirect("/login");
+
     res.send(`
     <h1>Dashboard</h1>
     <a href="/caixa">Caixa</a><br><br>
@@ -87,49 +60,41 @@ app.get("/", auth, (req, res) => {
 });
 
 // CAIXA
-app.get("/caixa", auth, (req, res) => {
+app.get("/caixa", (req, res) => {
+    if (!req.session.user) return res.redirect("/login");
 
-    db.get(
-        "SELECT * FROM caixa WHERE status='aberto' AND empresa_id=?",
-        [req.session.empresa_id],
-        (err, caixa) => {
+    db.get("SELECT * FROM caixa WHERE status='aberto'", (err, caixa) => {
 
-            if (!caixa) {
-                return res.send(`
-                <h1>Abrir Caixa</h1>
-                <form method="POST" action="/caixa/abrir">
-                    <input name="valor">
-                    <button>Abrir</button>
-                </form>
-                `);
-            }
-
-            res.send(`
-                <h1>Caixa Aberto</h1>
-                <p>Saldo: ${caixa.saldo_inicial}</p>
-
-                <form method="POST" action="/caixa/fechar">
-                    <button>Fechar</button>
-                </form>
+        if (!caixa) {
+            return res.send(`
+            <h1>Abrir Caixa</h1>
+            <form method="POST" action="/caixa/abrir">
+                <input name="valor">
+                <button>Abrir</button>
+            </form>
             `);
         }
-    );
+
+        res.send(`
+        <h1>Caixa Aberto</h1>
+        <p>Saldo: ${caixa.saldo}</p>
+        <form method="POST" action="/caixa/fechar">
+            <button>Fechar</button>
+        </form>
+        `);
+    });
 });
 
-app.post("/caixa/abrir", auth, (req, res) => {
-    db.run(
-        "INSERT INTO caixa (empresa_id, saldo_inicial, status) VALUES (?, ?, 'aberto')",
-        [req.session.empresa_id, req.body.valor],
-        () => res.redirect("/caixa")
-    );
+app.post("/caixa/abrir", (req, res) => {
+    db.run("INSERT INTO caixa (saldo, status) VALUES (?, 'aberto')", [req.body.valor], () => {
+        res.redirect("/caixa");
+    });
 });
 
-app.post("/caixa/fechar", auth, (req, res) => {
-    db.run(
-        "UPDATE caixa SET status='fechado' WHERE empresa_id=?",
-        [req.session.empresa_id],
-        () => res.redirect("/caixa")
-    );
+app.post("/caixa/fechar", (req, res) => {
+    db.run("UPDATE caixa SET status='fechado'", () => {
+        res.redirect("/caixa");
+    });
 });
 
 app.get("/logout", (req, res) => {
@@ -141,5 +106,5 @@ app.get("/logout", (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log("🚀 Rodando");
+    console.log("Rodando...");
 });
