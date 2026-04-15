@@ -4,40 +4,62 @@
     <h2>💻 Cyber PDV</h2>
     <div class="menu">
         <a href="/">Dashboard</a>
-        <a href="/pdv">PDV</a>
         <a href="/produtos">Produtos</a>
-        <a href="/caixa">Caixa</a>
     </div>
 </div>
 
 <div class="container">
-    <div class="card">
-        <h2>PDV</h2>
 
-        <input id="produto" placeholder="Digite produto">
-        <button onclick="add()">Adicionar</button>
+<div class="card">
+<h2>PDV</h2>
 
-        <ul id="lista"></ul>
+<input id="busca" placeholder="Digite produto">
 
-        <h3>Total: R$ <span id="total">0</span></h3>
-    </div>
+<ul id="lista"></ul>
+
+<h2>Total: R$ <span id="total">0</span></h2>
+
+<form method="POST" action="/venda">
+<input type="hidden" name="total" id="totalInput">
+<button onclick="finalizar()">Finalizar</button>
+</form>
+
+</div>
+
 </div>
 
 <script>
+const produtos = <%- JSON.stringify(produtos) %>;
 let total = 0;
 
-function add(){
-    let nome = document.getElementById("produto").value;
+document.getElementById("busca").addEventListener("keyup", function(e){
 
-    if(!nome) return;
+    if(e.key === "Enter"){
 
-    let li = document.createElement("li");
-    li.innerText = nome;
-    document.getElementById("lista").appendChild(li);
+        let nome = this.value.toLowerCase();
 
-    total += 10;
-    document.getElementById("total").innerText = total;
+        let produto = produtos.find(p => p.nome.toLowerCase() === nome);
 
-    document.getElementById("produto").value = "";
+        if(!produto){
+            alert("Produto não encontrado");
+            this.value = "";
+            return;
+        }
+
+        total += produto.preco;
+
+        document.getElementById("total").innerText = total;
+
+        let li = document.createElement("li");
+        li.innerText = produto.nome + " - R$ " + produto.preco;
+
+        document.getElementById("lista").appendChild(li);
+
+        this.value = "";
+    }
+});
+
+function finalizar(){
+    document.getElementById("totalInput").value = total;
 }
 </script>

@@ -5,16 +5,28 @@
     <div class="menu">
         <a href="/">Dashboard</a>
         <a href="/pdv">PDV</a>
-        <a href="/produtos">Produtos</a>
-        <a href="/caixa">Caixa</a>
     </div>
 </div>
 
 <div class="container">
-    <div class="card">
-        <h2>Produtos</h2>
-        <input placeholder="Nome">
-        <input placeholder="Preço">
-        <button>Salvar</button>
-    </div>
+
+<div class="card">
+<h2>Novo Produto</h2>
+
+<form method="POST">
+<input name="nome" placeholder="Nome">
+<input name="preco" placeholder="Preço">
+<button>Salvar</button>
+</form>
+</div>
+
+<div class="card">
+<h2>Lista</h2>
+<ul>
+<% produtos.forEach(p => { %>
+<li><%= p.nome %> - R$ <%= p.preco %></li>
+<% }) %>
+</ul>
+</div>
+
 </div>
