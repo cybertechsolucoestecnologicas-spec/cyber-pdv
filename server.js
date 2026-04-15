@@ -1,6 +1,6 @@
 const express = require("express");
 const session = require("express-session");
-const sqlite3 = require("sqlite3").verbose();
+const fs = require("fs");
 
 const app = express();
 
@@ -12,16 +12,23 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// BANCO LOCAL (SEM ERRO)
-const db = new sqlite3.Database("./pdv.db");
+// 🔥 BANCO SIMPLES (JSON)
+const DB_FILE = "db.json";
 
-// CRIA TABELAS
-db.serialize(() => {
-    db.run("CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY, usuario TEXT, senha TEXT)");
-    db.run("CREATE TABLE IF NOT EXISTS caixa (id INTEGER PRIMARY KEY, saldo REAL, status TEXT)");
+if (!fs.existsSync(DB_FILE)) {
+    fs.writeFileSync(DB_FILE, JSON.stringify({
+        usuarios: [{ usuario: "admin", senha: "123" }],
+        caixa: null
+    }));
+}
 
-    db.run("INSERT INTO usuarios (usuario, senha) SELECT 'admin','123' WHERE NOT EXISTS (SELECT 1 FROM usuarios)");
-});
+function readDB() {
+    return JSON.parse(fs.readFileSync(DB_FILE));
+}
+
+function writeDB(data) {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+}
 
 // LOGIN
 app.get("/login", (req, res) => {
@@ -37,15 +44,16 @@ app.get("/login", (req, res) => {
 
 app.post("/login", (req, res) => {
     const { usuario, senha } = req.body;
+    const db = readDB();
 
-    db.get("SELECT * FROM usuarios WHERE usuario=? AND senha=?", [usuario, senha], (err, user) => {
-        if (user) {
-            req.session.user = user;
-            res.redirect("/");
-        } else {
-            res.send("Login inválido");
-        }
-    });
+    const user = db.usuarios.find(u => u.usuario === usuario && u.senha === senha);
+
+    if (user) {
+        req.session.user = user;
+        res.redirect("/");
+    } else {
+        res.send("Login inválido");
+    }
 });
 
 // DASHBOARD
@@ -63,38 +71,39 @@ app.get("/", (req, res) => {
 app.get("/caixa", (req, res) => {
     if (!req.session.user) return res.redirect("/login");
 
-    db.get("SELECT * FROM caixa WHERE status='aberto'", (err, caixa) => {
+    const db = readDB();
 
-        if (!caixa) {
-            return res.send(`
-            <h1>Abrir Caixa</h1>
-            <form method="POST" action="/caixa/abrir">
-                <input name="valor">
-                <button>Abrir</button>
-            </form>
-            `);
-        }
+    if (!db.caixa) {
+        return res.send(`
+        <h1>Abrir Caixa</h1>
+        <form method="POST" action="/caixa/abrir">
+            <input name="valor">
+            <button>Abrir</button>
+        </form>
+        `);
+    }
 
-        res.send(`
+    res.send(`
         <h1>Caixa Aberto</h1>
-        <p>Saldo: ${caixa.saldo}</p>
+        <p>Saldo: ${db.caixa}</p>
         <form method="POST" action="/caixa/fechar">
             <button>Fechar</button>
         </form>
-        `);
-    });
+    `);
 });
 
 app.post("/caixa/abrir", (req, res) => {
-    db.run("INSERT INTO caixa (saldo, status) VALUES (?, 'aberto')", [req.body.valor], () => {
-        res.redirect("/caixa");
-    });
+    const db = readDB();
+    db.caixa = req.body.valor;
+    writeDB(db);
+    res.redirect("/caixa");
 });
 
 app.post("/caixa/fechar", (req, res) => {
-    db.run("UPDATE caixa SET status='fechado'", () => {
-        res.redirect("/caixa");
-    });
+    const db = readDB();
+    db.caixa = null;
+    writeDB(db);
+    res.redirect("/caixa");
 });
 
 app.get("/logout", (req, res) => {
@@ -106,5 +115,5 @@ app.get("/logout", (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log("Rodando...");
+    console.log("🚀 Sistema rodando");
 });
