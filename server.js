@@ -1,8 +1,6 @@
-require("dotenv").config();
-
 const express = require("express");
-const mysql = require("mysql2");
 const session = require("express-session");
+const sqlite3 = require("sqlite3").verbose();
 
 const app = express();
 
@@ -15,46 +13,44 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// ================= CONEXÃO MYSQL (RENDER + RAILWAY) =================
+// 🔥 BANCO SQLITE (SEM ERRO)
+const db = new sqlite3.Database("./pdv.db");
 
-const db = mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 3306,
-    ssl: {
-        rejectUnauthorized: false
-    },
-    connectTimeout: 10000
+// CRIA TABELAS AUTOMATICO
+db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario TEXT,
+        senha TEXT,
+        empresa_id INTEGER
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS caixa (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        empresa_id INTEGER,
+        saldo_inicial REAL,
+        status TEXT
+    )`);
+
+    // cria usuário padrão
+    db.run(`INSERT INTO usuarios (usuario, senha, empresa_id)
+        SELECT 'admin', '123', 1
+        WHERE NOT EXISTS (SELECT 1 FROM usuarios)`);
 });
 
-// TESTE DE CONEXÃO REAL
-db.connect((err) => {
-    if (err) {
-        console.log("❌ ERRO AO CONECTAR NO BANCO:");
-        console.log(err.code);
-        console.log(err.message);
-    } else {
-        console.log("✅ BANCO CONECTADO COM SUCESSO");
-    }
-});
-
-// ================= AUTH =================
-
+// AUTH
 function auth(req, res, next) {
     if (!req.session.user) return res.redirect("/login");
     next();
 }
 
-// ================= LOGIN =================
-
+// LOGIN
 app.get("/login", (req, res) => {
     res.send(`
-    <h2>Login PDV</h2>
+    <h2>Login</h2>
     <form method="POST">
-        <input name="usuario" placeholder="Usuário"><br><br>
-        <input name="senha" type="password" placeholder="Senha"><br><br>
+        <input name="usuario"><br><br>
+        <input name="senha" type="password"><br><br>
         <button>Entrar</button>
     </form>
     `);
@@ -63,19 +59,16 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
     const { usuario, senha } = req.body;
 
-    db.query(
+    db.get(
         "SELECT * FROM usuarios WHERE usuario=? AND senha=?",
         [usuario, senha],
-        (err, result) => {
+        (err, user) => {
 
-            if (err) {
-                console.log("❌ ERRO LOGIN:", err);
-                return res.send("Erro no banco");
-            }
+            if (err) return res.send("Erro no banco");
 
-            if (result.length > 0) {
-                req.session.user = result[0];
-                req.session.empresa_id = result[0].empresa_id;
+            if (user) {
+                req.session.user = user;
+                req.session.empresa_id = user.empresa_id;
                 res.redirect("/");
             } else {
                 res.send("Login inválido");
@@ -84,94 +77,69 @@ app.post("/login", (req, res) => {
     );
 });
 
-app.get("/logout", (req, res) => {
-    req.session.destroy();
-    res.redirect("/login");
-});
-
-// ================= DASHBOARD =================
-
+// DASHBOARD
 app.get("/", auth, (req, res) => {
     res.send(`
     <h1>Dashboard</h1>
-    <a href="/caixa">💰 Caixa</a><br><br>
-    <a href="/logout">🚪 Sair</a>
+    <a href="/caixa">Caixa</a><br><br>
+    <a href="/logout">Sair</a>
     `);
 });
 
-// ================= CAIXA =================
-
+// CAIXA
 app.get("/caixa", auth, (req, res) => {
 
-    db.query(
-        "SELECT * FROM caixa WHERE empresa_id=? AND status='aberto' LIMIT 1",
+    db.get(
+        "SELECT * FROM caixa WHERE status='aberto' AND empresa_id=?",
         [req.session.empresa_id],
-        (err, result) => {
+        (err, caixa) => {
 
-            if (err) {
-                console.log("❌ ERRO CAIXA:", err);
-                return res.send("Erro no caixa");
-            }
-
-            if (!result || result.length === 0) {
+            if (!caixa) {
                 return res.send(`
-                <h1>💰 Abrir Caixa</h1>
+                <h1>Abrir Caixa</h1>
                 <form method="POST" action="/caixa/abrir">
-                    <input name="valor" required placeholder="Valor inicial">
+                    <input name="valor">
                     <button>Abrir</button>
                 </form>
-                <br><a href="/">Voltar</a>
                 `);
             }
 
             res.send(`
-                <h1>💰 Caixa Aberto</h1>
-                <p>Saldo inicial: R$ ${result[0].saldo_inicial}</p>
+                <h1>Caixa Aberto</h1>
+                <p>Saldo: ${caixa.saldo_inicial}</p>
 
                 <form method="POST" action="/caixa/fechar">
-                    <button>Fechar Caixa</button>
+                    <button>Fechar</button>
                 </form>
-
-                <br><a href="/">Voltar</a>
             `);
         }
     );
 });
 
 app.post("/caixa/abrir", auth, (req, res) => {
-
-    db.query(
+    db.run(
         "INSERT INTO caixa (empresa_id, saldo_inicial, status) VALUES (?, ?, 'aberto')",
         [req.session.empresa_id, req.body.valor],
-        (err) => {
-            if (err) {
-                console.log("❌ ERRO ABRIR CAIXA:", err);
-                return res.send("Erro ao abrir caixa");
-            }
-            res.redirect("/caixa");
-        }
+        () => res.redirect("/caixa")
     );
 });
 
 app.post("/caixa/fechar", auth, (req, res) => {
-
-    db.query(
-        "UPDATE caixa SET status='fechado', data_fechamento=NOW() WHERE empresa_id=? AND status='aberto'",
+    db.run(
+        "UPDATE caixa SET status='fechado' WHERE empresa_id=?",
         [req.session.empresa_id],
-        (err) => {
-            if (err) {
-                console.log("❌ ERRO FECHAR CAIXA:", err);
-                return res.send("Erro ao fechar caixa");
-            }
-            res.redirect("/caixa");
-        }
+        () => res.redirect("/caixa")
     );
 });
 
-// ================= START =================
+app.get("/logout", (req, res) => {
+    req.session.destroy();
+    res.redirect("/login");
+});
 
+// START
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log("🚀 Servidor rodando na porta", PORT);
+    console.log("🚀 Rodando");
 });
