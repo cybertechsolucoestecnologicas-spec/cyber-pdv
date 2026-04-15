@@ -5,6 +5,7 @@
     <div class="menu">
         <a href="/">Dashboard</a>
         <a href="/produtos">Produtos</a>
+        <a href="/relatorio">Relatório</a>
     </div>
 </div>
 
@@ -13,15 +14,15 @@
 <div class="card">
 <h2>PDV</h2>
 
-<input id="busca" placeholder="Digite produto">
+<input id="busca" placeholder="Digite o produto e pressione ENTER">
 
 <ul id="lista"></ul>
 
 <h2>Total: R$ <span id="total">0</span></h2>
 
-<form method="POST" action="/venda">
-<input type="hidden" name="total" id="totalInput">
-<button onclick="finalizar()">Finalizar</button>
+<form method="POST" action="/venda" onsubmit="finalizar()">
+    <input type="hidden" name="total" id="totalInput">
+    <button type="submit">Finalizar Venda</button>
 </form>
 
 </div>
@@ -30,8 +31,10 @@
 
 <script>
 const produtos = <%- JSON.stringify(produtos) %>;
+
 let total = 0;
 
+// DIGITAR PRODUTO
 document.getElementById("busca").addEventListener("keyup", function(e){
 
     if(e.key === "Enter"){
@@ -59,6 +62,7 @@ document.getElementById("busca").addEventListener("keyup", function(e){
     }
 });
 
+// FINALIZAR VENDA (CORRIGIDO)
 function finalizar(){
     document.getElementById("totalInput").value = total;
 }
