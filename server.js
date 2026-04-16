@@ -9,7 +9,7 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.set("view engine", "ejs");
 
-// ================= BANCO (POOL - CORRIGIDO) =================
+// ================= BANCO (POOL) =================
 const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -21,7 +21,17 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-console.log("🔥 MySQL Pool conectado");
+console.log("🔥 Iniciando conexão com banco...");
+
+// 🔥 TESTE REAL DE CONEXÃO
+db.getConnection((err, conn) => {
+    if (err) {
+        console.error("❌ ERRO REAL DO BANCO:", err);
+    } else {
+        console.log("✅ BANCO CONECTADO COM SUCESSO");
+        conn.release();
+    }
+});
 
 // ================= CRIAR TABELAS =================
 db.query(`
@@ -72,7 +82,9 @@ app.post("/produtos", (req, res) => {
         "INSERT INTO produtos (nome, preco) VALUES (?, ?)",
         [nome, Number(preco)],
         err => {
-            if (err) console.error(err);
+            if (err) {
+                console.error("❌ ERRO AO SALVAR PRODUTO:", err);
+            }
             res.redirect("/produtos");
         }
     );
@@ -102,7 +114,7 @@ app.post("/venda", (req, res) => {
         [total],
         err => {
             if (err) {
-                console.error("ERRO AO SALVAR VENDA:", err);
+                console.error("❌ ERRO AO SALVAR VENDA:", err);
             }
             res.redirect("/");
         }
@@ -129,5 +141,5 @@ app.get("/login", (req, res) => res.render("login"));
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log("🚀 PDV ONLINE COM BANCO REAL (100%)");
+    console.log("🚀 PDV ONLINE");
 });
