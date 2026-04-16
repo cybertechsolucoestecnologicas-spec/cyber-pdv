@@ -9,7 +9,6 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.set("view engine", "ejs");
 
-// ================= BANCO (POOL) =================
 const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -21,17 +20,14 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-// TESTE DE CONEXÃO
 db.getConnection((err, conn) => {
-    if (err) {
-        console.error("❌ ERRO BANCO:", err);
-    } else {
-        console.log("✅ BANCO CONECTADO");
+    if (err) console.error("ERRO BANCO:", err);
+    else {
+        console.log("BANCO OK");
         conn.release();
     }
 });
 
-// ================= TABELAS =================
 db.query(`
 CREATE TABLE IF NOT EXISTS produtos (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -48,21 +44,15 @@ CREATE TABLE IF NOT EXISTS vendas (
 )
 `);
 
-// ================= DASHBOARD =================
 app.get("/", (req, res) => {
     db.query("SELECT SUM(total) AS total FROM vendas", (err, result) => {
-        if (err) return res.render("dashboard", { total: 0 });
-
-        const total = result[0].total || 0;
+        const total = result[0]?.total || 0;
         res.render("dashboard", { total });
     });
 });
 
-// ================= PRODUTOS =================
 app.get("/produtos", (req, res) => {
     db.query("SELECT * FROM produtos", (err, produtos) => {
-        if (err) return res.render("produtos", { produtos: [] });
-
         res.render("produtos", { produtos });
     });
 });
@@ -72,57 +62,39 @@ app.post("/produtos", (req, res) => {
 
     db.query(
         "INSERT INTO produtos (nome, preco) VALUES (?, ?)",
-        [nome, Number(preco)],
-        err => {
-            if (err) console.error(err);
-            res.redirect("/produtos");
-        }
+        [nome, preco],
+        () => res.redirect("/produtos")
     );
 });
 
-// ================= PDV =================
 app.get("/pdv", (req, res) => {
     db.query("SELECT * FROM produtos", (err, produtos) => {
-        if (err) return res.render("pdv", { produtos: [] });
-
         res.render("pdv", { produtos });
     });
 });
 
-// 🔥 FINALIZAR VENDA (IMPORTANTE)
 app.post("/venda", (req, res) => {
     const total = Number(req.body.total);
 
-    if (!total || total <= 0) {
-        return res.redirect("/pdv");
+    if (total > 0) {
+        db.query(
+            "INSERT INTO vendas (total, data) VALUES (?, NOW())",
+            [total],
+            () => res.redirect("/")
+        );
+    } else {
+        res.redirect("/pdv");
     }
-
-    db.query(
-        "INSERT INTO vendas (total, data) VALUES (?, NOW())",
-        [total],
-        err => {
-            if (err) console.error("ERRO VENDA:", err);
-            res.redirect("/");
-        }
-    );
 });
 
-// ================= RELATÓRIO =================
 app.get("/relatorio", (req, res) => {
     db.query("SELECT * FROM vendas ORDER BY id DESC", (err, vendas) => {
-        if (err) return res.render("relatorio", { vendas: [] });
-
         res.render("relatorio", { vendas });
     });
 });
 
-// ================= OUTROS =================
-app.get("/caixa", (req, res) => res.render("caixa"));
-app.get("/login", (req, res) => res.render("login"));
-
-// ================= START =================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log("🚀 PDV ONLINE");
+    console.log("PDV ONLINE");
 });
