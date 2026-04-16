@@ -10,7 +10,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// 🔥 BANCO FAKE (FUNCIONA SEM MYSQL)
+// 🔥 BANCO TEMPORÁRIO (FUNCIONA SEM MYSQL)
 let produtos = [];
 let vendas = [];
 
@@ -27,7 +27,16 @@ app.get("/produtos", (req, res) => {
 
 app.post("/produtos", (req, res) => {
     const { nome, preco } = req.body;
-    produtos.push({ nome, preco: parseFloat(preco) });
+
+    if (!nome || !preco) {
+        return res.send("Preencha tudo");
+    }
+
+    produtos.push({
+        nome,
+        preco: parseFloat(preco)
+    });
+
     res.redirect("/produtos");
 });
 
@@ -36,15 +45,17 @@ app.get("/pdv", (req, res) => {
     res.render("pdv", { produtos });
 });
 
-// FINALIZAR
+// FINALIZAR VENDA
 app.post("/finalizar", (req, res) => {
     const { total } = req.body;
 
     if (!total || total == 0) {
-        return res.send("Venda inválida");
+        return res.send("Adicione produto antes de finalizar");
     }
 
-    vendas.push({ total: parseFloat(total) });
+    vendas.push({
+        total: parseFloat(total)
+    });
 
     res.redirect("/dashboard");
 });
@@ -58,7 +69,9 @@ app.get("/", (req, res) => {
     res.redirect("/dashboard");
 });
 
+// 🔥 ESSENCIAL PRA RENDER
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log("🚀 SISTEMA FUNCIONANDO SEM BANCO");
+
+app.listen(PORT, "0.0.0.0", () => {
+    console.log("🚀 SERVIDOR ONLINE");
 });
