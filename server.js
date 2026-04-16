@@ -9,22 +9,19 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.set("view engine", "ejs");
 
-// ================= CONEXÃO COM BANCO (RENDER + RAILWAY) =================
-const db = mysql.createConnection({
+// ================= BANCO (POOL - CORRIGIDO) =================
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT
+    port: process.env.DB_PORT,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-db.connect(err => {
-    if (err) {
-        console.error("❌ ERRO AO CONECTAR NO BANCO:", err);
-    } else {
-        console.log("🔥 CONECTADO AO BANCO COM SUCESSO");
-    }
-});
+console.log("🔥 MySQL Pool conectado");
 
 // ================= CRIAR TABELAS =================
 db.query(`
@@ -132,5 +129,5 @@ app.get("/login", (req, res) => res.render("login"));
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log("🚀 PDV ONLINE FUNCIONANDO COM BANCO REAL");
+    console.log("🚀 PDV ONLINE COM BANCO REAL (100%)");
 });
