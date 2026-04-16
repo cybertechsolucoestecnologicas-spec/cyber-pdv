@@ -21,19 +21,17 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-console.log("🔥 Iniciando conexão com banco...");
-
-// 🔥 TESTE REAL DE CONEXÃO
+// TESTE DE CONEXÃO
 db.getConnection((err, conn) => {
     if (err) {
-        console.error("❌ ERRO REAL DO BANCO:", err);
+        console.error("❌ ERRO BANCO:", err);
     } else {
-        console.log("✅ BANCO CONECTADO COM SUCESSO");
+        console.log("✅ BANCO CONECTADO");
         conn.release();
     }
 });
 
-// ================= CRIAR TABELAS =================
+// ================= TABELAS =================
 db.query(`
 CREATE TABLE IF NOT EXISTS produtos (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -53,10 +51,7 @@ CREATE TABLE IF NOT EXISTS vendas (
 // ================= DASHBOARD =================
 app.get("/", (req, res) => {
     db.query("SELECT SUM(total) AS total FROM vendas", (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.render("dashboard", { total: 0 });
-        }
+        if (err) return res.render("dashboard", { total: 0 });
 
         const total = result[0].total || 0;
         res.render("dashboard", { total });
@@ -66,10 +61,7 @@ app.get("/", (req, res) => {
 // ================= PRODUTOS =================
 app.get("/produtos", (req, res) => {
     db.query("SELECT * FROM produtos", (err, produtos) => {
-        if (err) {
-            console.error(err);
-            return res.render("produtos", { produtos: [] });
-        }
+        if (err) return res.render("produtos", { produtos: [] });
 
         res.render("produtos", { produtos });
     });
@@ -82,9 +74,7 @@ app.post("/produtos", (req, res) => {
         "INSERT INTO produtos (nome, preco) VALUES (?, ?)",
         [nome, Number(preco)],
         err => {
-            if (err) {
-                console.error("❌ ERRO AO SALVAR PRODUTO:", err);
-            }
+            if (err) console.error(err);
             res.redirect("/produtos");
         }
     );
@@ -93,15 +83,13 @@ app.post("/produtos", (req, res) => {
 // ================= PDV =================
 app.get("/pdv", (req, res) => {
     db.query("SELECT * FROM produtos", (err, produtos) => {
-        if (err) {
-            console.error(err);
-            return res.render("pdv", { produtos: [] });
-        }
+        if (err) return res.render("pdv", { produtos: [] });
 
         res.render("pdv", { produtos });
     });
 });
 
+// 🔥 FINALIZAR VENDA (IMPORTANTE)
 app.post("/venda", (req, res) => {
     const total = Number(req.body.total);
 
@@ -113,9 +101,7 @@ app.post("/venda", (req, res) => {
         "INSERT INTO vendas (total, data) VALUES (?, NOW())",
         [total],
         err => {
-            if (err) {
-                console.error("❌ ERRO AO SALVAR VENDA:", err);
-            }
+            if (err) console.error("ERRO VENDA:", err);
             res.redirect("/");
         }
     );
@@ -124,10 +110,7 @@ app.post("/venda", (req, res) => {
 // ================= RELATÓRIO =================
 app.get("/relatorio", (req, res) => {
     db.query("SELECT * FROM vendas ORDER BY id DESC", (err, vendas) => {
-        if (err) {
-            console.error(err);
-            return res.render("relatorio", { vendas: [] });
-        }
+        if (err) return res.render("relatorio", { vendas: [] });
 
         res.render("relatorio", { vendas });
     });
