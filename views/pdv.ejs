@@ -20,7 +20,7 @@
 
 <h2>Total: R$ <span id="total">0</span></h2>
 
-<form method="POST" action="/venda" onsubmit="return finalizar()">
+<form method="POST" action="/venda" id="formVenda">
     <input type="hidden" name="total" id="totalInput">
     <button type="submit">Finalizar Venda</button>
 </form>
@@ -30,9 +30,12 @@
 
 <script>
 const produtos = <%- JSON.stringify(produtos) %>;
+
 let total = 0;
 
+// ADICIONAR PRODUTO
 document.getElementById("busca").addEventListener("keyup", function(e){
+
     if(e.key === "Enter"){
 
         let nome = this.value.toLowerCase();
@@ -58,8 +61,16 @@ document.getElementById("busca").addEventListener("keyup", function(e){
     }
 });
 
-function finalizar(){
+// FORÇAR ENVIO CORRETO
+document.getElementById("formVenda").addEventListener("submit", function(e){
+
+    if(total <= 0){
+        e.preventDefault();
+        alert("Adicione produto antes de finalizar");
+        return;
+    }
+
     document.getElementById("totalInput").value = total;
-    return true;
-}
+
+});
 </script>
