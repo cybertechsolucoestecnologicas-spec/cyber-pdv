@@ -28,21 +28,28 @@ const lista = document.getElementById("lista");
 const totalSpan = document.getElementById("total");
 const totalInput = document.getElementById("totalInput");
 
-busca.addEventListener("change", () => {
-    let nome = busca.value.toLowerCase();
+// 🔥 DIGITOU E APERTOU ENTER
+busca.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
 
-    let produto = produtos.find(p => p.nome.toLowerCase() === nome);
+        let nome = busca.value.toLowerCase().trim();
 
-    if (!produto) {
-        alert("Produto não encontrado");
-        return;
+        let produto = produtos.find(p =>
+            p.nome.toLowerCase().includes(nome)
+        );
+
+        if (!produto) {
+            alert("Produto não encontrado");
+            return;
+        }
+
+        carrinho.push(produto);
+        total += produto.preco;
+
+        atualizarTela();
+        busca.value = "";
     }
-
-    carrinho.push(produto);
-    total += produto.preco;
-
-    atualizarTela();
-    busca.value = "";
 });
 
 function atualizarTela() {
@@ -55,6 +62,8 @@ function atualizarTela() {
     });
 
     totalSpan.innerText = total.toFixed(2);
+
+    // 🔥 ESSENCIAL
     totalInput.value = total;
 }
 </script>

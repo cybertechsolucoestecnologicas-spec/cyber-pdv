@@ -10,7 +10,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// 🔥 BANCO TEMPORÁRIO (FUNCIONA SEM MYSQL)
+// 🔥 BANCO TEMPORÁRIO
 let produtos = [];
 let vendas = [];
 
@@ -33,7 +33,7 @@ app.post("/produtos", (req, res) => {
     }
 
     produtos.push({
-        nome,
+        nome: nome.trim(),
         preco: parseFloat(preco)
     });
 
@@ -47,15 +47,13 @@ app.get("/pdv", (req, res) => {
 
 // FINALIZAR VENDA
 app.post("/finalizar", (req, res) => {
-    const { total } = req.body;
+    const total = parseFloat(req.body.total);
 
-    if (!total || total == 0) {
+    if (!total || total <= 0) {
         return res.send("Adicione produto antes de finalizar");
     }
 
-    vendas.push({
-        total: parseFloat(total)
-    });
+    vendas.push({ total });
 
     res.redirect("/dashboard");
 });
@@ -69,7 +67,7 @@ app.get("/", (req, res) => {
     res.redirect("/dashboard");
 });
 
-// 🔥 ESSENCIAL PRA RENDER
+// PORTA RENDER
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
