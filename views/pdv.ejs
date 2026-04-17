@@ -2,69 +2,116 @@
 <html>
 <head>
     <title>PDV</title>
+    <style>
+        body {
+            background: #0b1a2f;
+            color: white;
+            font-family: Arial;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        .produtos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .produto {
+            background: #1e2f4d;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 120px;
+            text-align: center;
+        }
+
+        .produto:hover {
+            background: #2e4a7a;
+        }
+
+        .carrinho {
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #22c55e;
+            border: none;
+            color: black;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
 </head>
-<body style="background:#0b1a2f; color:white; font-family:Arial;">
 
-<h2>PDV</h2>
+<body>
 
-<input id="busca" placeholder="Digite o produto" style="width:300px; padding:10px;">
+<h2>🛒 PDV</h2>
 
-<ul id="lista"></ul>
+<div class="produtos">
+    <% produtos.forEach(p => { %>
+        <div class="produto" onclick="addProduto('<%= p.nome %>', <%= p.preco %>)">
+            <strong><%= p.nome %></strong><br>
+            R$ <%= p.preco %>
+        </div>
+    <% }) %>
+</div>
 
-<h3>Total: R$ <span id="total">0</span></h3>
+<div class="carrinho">
+    <h3>Carrinho</h3>
+    <ul id="lista"></ul>
 
-<form method="POST" action="/finalizar">
-    <input type="hidden" name="total" id="totalInput">
-    <button type="submit">Finalizar Venda</button>
-</form>
+    <h2>Total: R$ <span id="total">0</span></h2>
+
+    <form method="POST" action="/finalizar">
+        <input type="hidden" name="total" id="totalInput">
+        <button type="submit">Finalizar Venda</button>
+    </form>
+</div>
+
+<!-- 🔊 SOM DE BIP -->
+<audio id="bip" src="https://www.soundjay.com/buttons/sounds/beep-07.mp3"></audio>
 
 <script>
-let produtos = <%- JSON.stringify(produtos) %>;
 let carrinho = [];
 let total = 0;
 
-const busca = document.getElementById("busca");
 const lista = document.getElementById("lista");
 const totalSpan = document.getElementById("total");
 const totalInput = document.getElementById("totalInput");
+const bip = document.getElementById("bip");
 
-// 🔥 DIGITOU E APERTOU ENTER
-busca.addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
-        e.preventDefault();
+function addProduto(nome, preco) {
+    carrinho.push({ nome, preco });
+    total += preco;
 
-        let nome = busca.value.toLowerCase().trim();
+    bip.play(); // 🔊 som
 
-        let produto = produtos.find(p =>
-            p.nome.toLowerCase().includes(nome)
-        );
-
-        if (!produto) {
-            alert("Produto não encontrado");
-            return;
-        }
-
-        carrinho.push(produto);
-        total += produto.preco;
-
-        atualizarTela();
-        busca.value = "";
-    }
-});
+    atualizarTela();
+}
 
 function atualizarTela() {
     lista.innerHTML = "";
 
-    carrinho.forEach(p => {
+    carrinho.forEach((p, i) => {
         let li = document.createElement("li");
-        li.innerText = p.nome + " - R$ " + p.preco;
+        li.innerHTML = `${p.nome} - R$ ${p.preco} 
+        <button onclick="remover(${i})">X</button>`;
         lista.appendChild(li);
     });
 
     totalSpan.innerText = total.toFixed(2);
-
-    // 🔥 ESSENCIAL
     totalInput.value = total;
+}
+
+function remover(index) {
+    total -= carrinho[index].preco;
+    carrinho.splice(index, 1);
+    atualizarTela();
 }
 </script>
 
