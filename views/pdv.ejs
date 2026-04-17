@@ -2,145 +2,62 @@
 <html>
 <head>
 <title>PDV</title>
-
 <style>
-body { margin:0; font-family:Arial; background:#0b1a2f; color:white; }
-.container { display:flex; height:100vh; }
-
-.produtos {
-    width:60%;
-    padding:20px;
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-}
-
-.produto {
-    background:#1e2f4d;
-    padding:20px;
-    border-radius:10px;
-    width:140px;
-    text-align:center;
-    cursor:pointer;
-}
-
-.produto:hover { background:#2e4a7a; }
-
-.caixa {
-    width:40%;
-    background:#111827;
-    padding:20px;
-    display:flex;
-    flex-direction:column;
-}
-
-.item {
-    display:flex;
-    justify-content:space-between;
-    margin-bottom:10px;
-}
-
-.total {
-    font-size:35px;
-    margin:20px 0;
-}
-
-button {
-    padding:12px;
-    margin-top:5px;
-    cursor:pointer;
-}
+body { background:#0f172a; color:white; font-family:Arial; }
+input { width:100%; padding:15px; font-size:18px; }
+button { padding:15px; margin-top:10px; font-size:16px; }
+.total { font-size:40px; margin-top:20px; }
 </style>
 </head>
-
 <body>
 
-<div style="padding:10px;">
-    <a href="/caixa/abrir"><button>Abrir Caixa</button></a>
-    <a href="/caixa/fechar"><button>Fechar Caixa</button></a>
-</div>
+<h1>🛒 PDV</h1>
 
-<div class="container">
-
-<div class="produtos">
-<% produtos.forEach(p => { %>
-<div class="produto" onclick="addProduto('<%= p.nome %>', <%= p.preco %>)">
-<strong><%= p.nome %></strong><br>
-R$ <%= p.preco %>
-</div>
-<% }) %>
-</div>
-
-<div class="caixa">
-
-<h2>Caixa</h2>
+<input id="busca" placeholder="Digite produto"/>
 
 <div id="lista"></div>
 
-<div class="total">
-R$ <span id="total">0</span>
-</div>
+<div class="total" id="total">R$ 0</div>
 
-<form method="POST" action="/finalizar">
-<input type="hidden" name="total" id="totalInput">
-<button>Finalizar Venda</button>
-</form>
-
-<button onclick="limpar()">Cancelar</button>
-
-</div>
-
-</div>
-
-<audio id="bip" src="https://www.soundjay.com/buttons/sounds/beep-07.mp3"></audio>
+<button onclick="finalizar()">FINALIZAR VENDA</button>
 
 <script>
-let carrinho = [];
+let itens = [];
 let total = 0;
 
-const lista = document.getElementById("lista");
-const totalSpan = document.getElementById("total");
-const totalInput = document.getElementById("totalInput");
-const bip = document.getElementById("bip");
+document.getElementById("busca").addEventListener("change", async e => {
+    const nome = e.target.value;
 
-function addProduto(nome, preco) {
-    let item = carrinho.find(p => p.nome === nome);
-
-    if (item) {
-        item.qtd++;
-    } else {
-        carrinho.push({ nome, preco, qtd:1 });
-    }
-
-    total += preco;
-    bip.play();
-
-    atualizar();
-}
-
-function atualizar() {
-    lista.innerHTML = "";
-
-    carrinho.forEach(p => {
-        let div = document.createElement("div");
-        div.className = "item";
-
-        div.innerHTML = `
-        <span>${p.nome} x${p.qtd}</span>
-        <span>R$ ${(p.preco*p.qtd).toFixed(2)}</span>
-        `;
-
-        lista.appendChild(div);
+    const res = await fetch("/buscar-produto", {
+        method:"POST",
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ nome })
     });
 
-    totalSpan.innerText = total.toFixed(2);
-    totalInput.value = total;
-}
+    const prod = await res.json();
 
-function limpar(){
-    carrinho = [];
-    total = 0;
-    atualizar();
+    if(prod){
+        itens.push({ nome: prod.nome, preco: prod.preco, qtd:1 });
+        total += parseFloat(prod.preco);
+
+        document.getElementById("lista").innerHTML += `<p>${prod.nome} - R$ ${prod.preco}</p>`;
+        document.getElementById("total").innerText = "R$ " + total.toFixed(2);
+    } else {
+        alert("Produto não encontrado");
+    }
+
+    e.target.value="";
+});
+
+async function finalizar(){
+    await fetch("/finalizar", {
+        method:"POST",
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ total, itens })
+    });
+
+    alert("Venda finalizada");
+    location.reload();
 }
 </script>
 
