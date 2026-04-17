@@ -1,9 +1,4 @@
-<link rel="stylesheet" href="/css/style.css">
-
-<div class="container">
-
-<div class="card">
-<h2>Novo Produto</h2>
+<h2>Produtos</h2>
 
 <form method="POST">
 <input name="nome" placeholder="Nome">
@@ -11,17 +6,11 @@
 <button>Salvar</button>
 </form>
 
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;">
+<% produtos.forEach(p=>{ %>
+<div style="background:#1e293b;padding:15px;border-radius:10px;color:white">
+<b><%= p.nome %></b><br>
+R$ <%= p.preco %>
 </div>
-
-<div class="card">
-<h2>Lista</h2>
-
-<ul>
-<% produtos.forEach(p => { %>
-<li><%= p.nome %> - R$ <%= p.preco %></li>
 <% }) %>
-</ul>
-
-</div>
-
 </div>

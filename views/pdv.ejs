@@ -3,61 +3,150 @@
 <head>
 <title>PDV</title>
 <style>
-body { background:#0f172a; color:white; font-family:Arial; }
-input { width:100%; padding:15px; font-size:18px; }
-button { padding:15px; margin-top:10px; font-size:16px; }
-.total { font-size:40px; margin-top:20px; }
+body {
+    margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+}
+
+.header {
+    padding:15px;
+    background:#020617;
+    display:flex;
+    justify-content:space-between;
+}
+
+.container {
+    display:flex;
+    height:90vh;
+}
+
+.left {
+    width:60%;
+    padding:20px;
+}
+
+.right {
+    width:40%;
+    background:#020617;
+    padding:20px;
+}
+
+input {
+    width:100%;
+    padding:15px;
+    font-size:18px;
+}
+
+.item {
+    display:flex;
+    justify-content:space-between;
+    padding:10px;
+    border-bottom:1px solid #333;
+}
+
+.total {
+    font-size:30px;
+    margin:20px 0;
+}
+
+button {
+    padding:12px;
+    width:100%;
+    margin-top:10px;
+    border:none;
+    cursor:pointer;
+}
+
+.finalizar { background:#22c55e; color:white; }
+.cancelar { background:#ef4444; color:white; }
 </style>
 </head>
+
 <body>
 
-<h1>🛒 PDV</h1>
+<div class="header">
+<h2>Cyber PDV</h2>
+<div>Hoje: R$ <%= totalHoje %></div>
+</div>
 
-<input id="busca" placeholder="Digite produto"/>
+<div class="container">
 
+<div class="left">
+<input id="busca" placeholder="Digite produto e ENTER">
 <div id="lista"></div>
+</div>
 
+<div class="right">
+<h2>Caixa</h2>
+<div id="itens"></div>
 <div class="total" id="total">R$ 0</div>
 
-<button onclick="finalizar()">FINALIZAR VENDA</button>
+<button class="finalizar" onclick="finalizar()">Finalizar Venda</button>
+<button class="cancelar" onclick="cancelar()">Cancelar</button>
+</div>
+
+</div>
 
 <script>
-let itens = [];
-let total = 0;
+let carrinho = [];
 
-document.getElementById("busca").addEventListener("change", async e => {
-    const nome = e.target.value;
+document.getElementById("busca").addEventListener("keypress", function(e){
+    if(e.key === "Enter"){
+        fetch("/buscar-produto",{
+            method:"POST",
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({nome:this.value})
+        })
+        .then(r=>r.json())
+        .then(prod=>{
+            if(!prod) return alert("Produto não encontrado");
 
-    const res = await fetch("/buscar-produto", {
-        method:"POST",
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({ nome })
-    });
-
-    const prod = await res.json();
-
-    if(prod){
-        itens.push({ nome: prod.nome, preco: prod.preco, qtd:1 });
-        total += parseFloat(prod.preco);
-
-        document.getElementById("lista").innerHTML += `<p>${prod.nome} - R$ ${prod.preco}</p>`;
-        document.getElementById("total").innerText = "R$ " + total.toFixed(2);
-    } else {
-        alert("Produto não encontrado");
+            carrinho.push({...prod, qtd:1});
+            render();
+            this.value="";
+        });
     }
-
-    e.target.value="";
 });
 
-async function finalizar(){
-    await fetch("/finalizar", {
-        method:"POST",
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({ total, itens })
+function render(){
+    let html="";
+    let total=0;
+
+    carrinho.forEach((i,index)=>{
+        total += i.preco * i.qtd;
+
+        html += `
+        <div class="item">
+            ${i.nome} x${i.qtd}
+            <span>R$ ${i.preco}</span>
+        </div>`;
     });
 
-    alert("Venda finalizada");
-    location.reload();
+    document.getElementById("itens").innerHTML = html;
+    document.getElementById("total").innerText = "R$ " + total;
+}
+
+function cancelar(){
+    carrinho=[];
+    render();
+}
+
+function finalizar(){
+    if(carrinho.length===0) return alert("Adicione produtos");
+
+    let total = carrinho.reduce((t,i)=>t+i.preco*i.qtd,0);
+
+    fetch("/finalizar",{
+        method:"POST",
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({total, itens:carrinho})
+    }).then(()=>{
+        alert("Venda concluída");
+        cancelar();
+        location.reload();
+    });
 }
 </script>
 
