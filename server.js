@@ -13,29 +13,38 @@ app.set("views", path.join(__dirname, "views"));
 const db = mysql.createConnection(process.env.MYSQL_URL);
 
 db.connect(err => {
-    if (err) console.log(err);
+    if (err) console.log("ERRO:", err);
     else console.log("✅ BANCO OK");
 });
 
-// 🔥 TABELAS
+// 🔥 TABELAS SAAS
+db.query(`
+CREATE TABLE IF NOT EXISTS empresas (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ nome VARCHAR(255)
+)`);
+
 db.query(`
 CREATE TABLE IF NOT EXISTS usuarios (
  id INT AUTO_INCREMENT PRIMARY KEY,
  user VARCHAR(100),
- pass VARCHAR(100)
+ pass VARCHAR(100),
+ empresa_id INT
 )`);
 
 db.query(`
 CREATE TABLE IF NOT EXISTS produtos (
  id INT AUTO_INCREMENT PRIMARY KEY,
  nome VARCHAR(255),
- preco DECIMAL(10,2)
+ preco DECIMAL(10,2),
+ empresa_id INT
 )`);
 
 db.query(`
 CREATE TABLE IF NOT EXISTS vendas (
  id INT AUTO_INCREMENT PRIMARY KEY,
  total DECIMAL(10,2),
+ empresa_id INT,
  data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )`);
 
@@ -48,13 +57,18 @@ CREATE TABLE IF NOT EXISTS itens_venda (
  qtd INT
 )`);
 
-// 🔥 CRIAR USUÁRIO PADRÃO
+// 🔥 CRIA EMPRESA + USUARIO PADRÃO
+db.query(`INSERT IGNORE INTO empresas (id, nome) VALUES (1, 'Empresa Teste')`);
+
 db.query(`
-INSERT IGNORE INTO usuarios (id, user, pass)
-VALUES (1, 'admin', '1234')
+INSERT IGNORE INTO usuarios (id, user, pass, empresa_id)
+VALUES (1, 'admin', '1234', 1)
 `);
 
-// 🔐 LOGIN
+// 🔐 CONTROLE SIMPLES (GLOBAL)
+let empresaAtual = null;
+
+// LOGIN
 app.get("/login", (req, res) => {
     res.render("login");
 });
@@ -67,6 +81,7 @@ app.post("/login", (req, res) => {
         [user, pass],
         (err, result) => {
             if (result.length > 0) {
+                empresaAtual = result[0].empresa_id;
                 res.redirect("/pdv");
             } else {
                 res.send("Login inválido");
@@ -75,23 +90,26 @@ app.post("/login", (req, res) => {
     );
 });
 
-// 🔁 HOME REDIRECIONA PRA LOGIN
-app.get("/", (req, res) => {
-    res.redirect("/login");
-});
+// HOME
+app.get("/", (req, res) => res.redirect("/login"));
 
 // PRODUTOS
 app.get("/produtos", (req, res) => {
-    db.query("SELECT * FROM produtos", (err, produtos) => {
-        res.render("produtos", { produtos });
-    });
+    db.query(
+        "SELECT * FROM produtos WHERE empresa_id=?",
+        [empresaAtual],
+        (err, produtos) => {
+            res.render("produtos", { produtos });
+        }
+    );
 });
 
 app.post("/produtos", (req, res) => {
     const { nome, preco } = req.body;
+
     db.query(
-        "INSERT INTO produtos (nome, preco) VALUES (?, ?)",
-        [nome.toUpperCase(), preco],
+        "INSERT INTO produtos (nome, preco, empresa_id) VALUES (?, ?, ?)",
+        [nome.toUpperCase(), preco, empresaAtual],
         () => res.redirect("/produtos")
     );
 });
@@ -106,8 +124,8 @@ app.post("/buscar-produto", (req, res) => {
     const nome = req.body.nome;
 
     db.query(
-        "SELECT * FROM produtos WHERE nome = ?",
-        [nome.toUpperCase()],
+        "SELECT * FROM produtos WHERE nome=? AND empresa_id=?",
+        [nome.toUpperCase(), empresaAtual],
         (err, result) => {
             if (result.length > 0) res.json(result[0]);
             else res.json(null);
@@ -119,26 +137,35 @@ app.post("/buscar-produto", (req, res) => {
 app.post("/finalizar", (req, res) => {
     const { total, itens } = req.body;
 
-    db.query("INSERT INTO vendas (total) VALUES (?)", [total], (err, result) => {
-        const vendaId = result.insertId;
+    db.query(
+        "INSERT INTO vendas (total, empresa_id) VALUES (?, ?)",
+        [total, empresaAtual],
+        (err, result) => {
 
-        itens.forEach(item => {
-            db.query(
-                "INSERT INTO itens_venda (venda_id, nome, preco, qtd) VALUES (?, ?, ?, ?)",
-                [vendaId, item.nome, item.preco, item.qtd]
-            );
-        });
+            const vendaId = result.insertId;
 
-        res.send("Venda salva");
-    });
+            itens.forEach(item => {
+                db.query(
+                    "INSERT INTO itens_venda (venda_id, nome, preco, qtd) VALUES (?, ?, ?, ?)",
+                    [vendaId, item.nome, item.preco, item.qtd]
+                );
+            });
+
+            res.send("Venda salva");
+        }
+    );
 });
 
 // RELATORIO
 app.get("/relatorio", (req, res) => {
-    db.query("SELECT * FROM vendas ORDER BY id DESC", (err, vendas) => {
-        res.render("relatorio", { vendas });
-    });
+    db.query(
+        "SELECT * FROM vendas WHERE empresa_id=? ORDER BY id DESC",
+        [empresaAtual],
+        (err, vendas) => {
+            res.render("relatorio", { vendas });
+        }
+    );
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("🔥 RODANDO"));
+app.listen(PORT, () => console.log("🔥 SaaS rodando"));
