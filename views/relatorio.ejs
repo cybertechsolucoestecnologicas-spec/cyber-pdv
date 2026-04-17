@@ -8,15 +8,16 @@
 
 <% let total = 0; %>
 
-<% vendas.forEach(function(v, i){ %>
+<% for(let i = 0; i < vendas.length; i++){ %>
+
 <tr>
 <td><%= i+1 %></td>
-<td>R$ <%= v.total %></td>
+<td>R$ <%= vendas[i].total %></td>
 </tr>
 
-<% total += Number(v.total); %>
+<% total += Number(vendas[i].total); %>
 
-<% }) %>
+<% } %>
 
 </table>
 

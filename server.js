@@ -5,14 +5,11 @@ const path = require("path");
 
 const app = express();
 
-// CONFIG
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
-
-app.use(express.static("public"));
 
 app.use(session({
     secret: "cyberpdv",
@@ -20,11 +17,11 @@ app.use(session({
     saveUninitialized: true
 }));
 
-// CONEXÃO MYSQL (RAILWAY)
+// 🔥 CONEXÃO DIRETA (JÁ PRONTA COM SEU RAILWAY)
 const db = mysql.createConnection({
     host: "monorail.proxy.rlwy.net",
     user: "root",
-    password: "SUA_SENHA_AQUI",
+    password: "csZFJjDkwOFsojMotvxtVcNKhcDfGGjf",
     database: "railway",
     port: 41609
 });
@@ -33,12 +30,6 @@ db.connect(err => {
     if (err) console.log("Erro banco:", err);
     else console.log("Banco conectado");
 });
-
-// MIDDLEWARE LOGIN
-function auth(req, res, next){
-    if(!req.session.user) return res.redirect("/");
-    next();
-}
 
 // LOGIN
 app.get("/", (req, res) => {
@@ -65,48 +56,13 @@ app.post("/login", (req, res) => {
 });
 
 // PDV
-app.get("/pdv", auth, (req, res) => {
-
-    db.query("SELECT SUM(total) as total FROM vendas", (err, result) => {
-
-        const totalHoje = result[0]?.total || 0;
-
-        res.render("pdv", {
-            user: req.session.user,
-            totalHoje
-        });
-
-    });
-
-});
-
-// BUSCAR PRODUTO
-app.post("/buscar-produto", auth, (req, res) => {
-
-    const { nome } = req.body;
-
-    db.query(
-        "SELECT * FROM produtos WHERE nome LIKE ? LIMIT 1",
-        [`%${nome}%`],
-        (err, result) => {
-
-            if(result.length > 0){
-                res.json(result[0]);
-            } else {
-                res.json(null);
-            }
-
-        }
-    );
-
+app.get("/pdv", (req, res) => {
+    res.render("pdv");
 });
 
 // FINALIZAR VENDA
-app.post("/finalizar", auth, (req, res) => {
-
+app.post("/finalizar", (req, res) => {
     const { total } = req.body;
-
-    if(!total) return res.send("Erro");
 
     db.query(
         "INSERT INTO vendas (total) VALUES (?)",
@@ -115,59 +71,26 @@ app.post("/finalizar", auth, (req, res) => {
             res.send("ok");
         }
     );
-
 });
 
-// PRODUTOS
-app.get("/produtos", auth, (req, res) => {
+// RELATÓRIO
+app.get("/relatorio", (req, res) => {
 
-    db.query("SELECT * FROM produtos", (err, result) => {
-        res.render("produtos", { produtos: result });
-    });
+    db.query("SELECT * FROM vendas", (err, result) => {
 
-});
-
-app.post("/produtos", auth, (req, res) => {
-
-    const { nome, preco } = req.body;
-
-    db.query(
-        "INSERT INTO produtos (nome, preco) VALUES (?,?)",
-        [nome, preco],
-        () => {
-            res.redirect("/produtos");
-        }
-    );
-
-});
-
-// RELATÓRIO (CORRIGIDO)
-app.get("/relatorio", auth, (req, res) => {
-
-    db.query("SELECT * FROM vendas ORDER BY id DESC", (err, result) => {
-
-        if(err){
+        if (err) {
             console.log(err);
-            return res.send("Erro ao carregar relatório");
+            return res.send("Erro no banco");
         }
 
-        res.render("relatorio", {
-            vendas: result || []
-        });
+        res.render("relatorio", { vendas: result });
 
     });
 
 });
 
-// LOGOUT
-app.get("/logout", (req, res) => {
-    req.session.destroy();
-    res.redirect("/");
-});
-
-// SERVER
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log("Rodando na porta", PORT);
+    console.log("Rodando...");
 });
