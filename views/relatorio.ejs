@@ -1,15 +1,81 @@
-<h2>📊 Relatório</h2>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Relatório</title>
 
-<table border="1">
+<style>
+body{
+    background:#0f172a;
+    color:white;
+    font-family:Arial;
+}
+.container{
+    max-width:900px;
+    margin:auto;
+    padding:20px;
+}
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:10px;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+}
+th,td{
+    padding:10px;
+    border-bottom:1px solid #333;
+}
+.total{
+    font-size:22px;
+    margin-top:20px;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+<div class="card">
+
+<h2>📊 Relatório de Vendas</h2>
+
+<table>
 <tr>
 <th>ID</th>
-<th>Total</th>
+<th>Valor</th>
 </tr>
 
-<% vendas.forEach(v=>{ %>
+<% let total = 0; %>
+
+<% if(vendas && vendas.length){ %>
+
+    <% vendas.forEach(v=>{ %>
+        <% total += Number(v.total || 0); %>
+        <tr>
+            <td>#<%= v.id %></td>
+            <td>R$ <%= Number(v.total).toFixed(2) %></td>
+        </tr>
+    <% }) %>
+
+<% } else { %>
+
 <tr>
-<td><%= v.id %></td>
-<td>R$ <%= v.total %></td>
+<td colspan="2">Nenhuma venda encontrada</td>
 </tr>
-<% }) %>
+
+<% } %>
+
 </table>
+
+<div class="total">
+Total: R$ <%= total.toFixed(2) %>
+</div>
+
+</div>
+</div>
+
+</body>
+</html>
