@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const session = require("express-session");
 
 const app = express();
 
@@ -7,26 +8,68 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+app.use(session({
+    secret: "pdv-secret",
+    resave: false,
+    saveUninitialized: true
+}));
+
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// 🔥 DADOS (TEMPORÁRIO)
+// 🔥 USUÁRIO FIXO (ADMIN)
+const usuario = {
+    user: "admin",
+    pass: "1234"
+};
+
+// DADOS
 let produtos = [];
 let vendas = [];
 let caixaAberto = false;
 
+// 🔒 MIDDLEWARE LOGIN
+function auth(req, res, next) {
+    if (!req.session.logado) {
+        return res.redirect("/login");
+    }
+    next();
+}
+
+// LOGIN
+app.get("/login", (req, res) => {
+    res.render("login");
+});
+
+app.post("/login", (req, res) => {
+    const { user, pass } = req.body;
+
+    if (user === usuario.user && pass === usuario.pass) {
+        req.session.logado = true;
+        return res.redirect("/dashboard");
+    }
+
+    res.send("Login inválido");
+});
+
+// LOGOUT
+app.get("/logout", (req, res) => {
+    req.session.destroy();
+    res.redirect("/login");
+});
+
 // DASHBOARD
-app.get("/dashboard", (req, res) => {
-    let total = vendas.reduce((soma, v) => soma + v.total, 0);
+app.get("/dashboard", auth, (req, res) => {
+    let total = vendas.reduce((s, v) => s + v.total, 0);
     res.render("dashboard", { total });
 });
 
 // PRODUTOS
-app.get("/produtos", (req, res) => {
+app.get("/produtos", auth, (req, res) => {
     res.render("produtos", { produtos });
 });
 
-app.post("/produtos", (req, res) => {
+app.post("/produtos", auth, (req, res) => {
     const { nome, preco } = req.body;
 
     produtos.push({
@@ -37,42 +80,30 @@ app.post("/produtos", (req, res) => {
     res.redirect("/produtos");
 });
 
-// 🔥 ABRIR CAIXA
-app.get("/caixa/abrir", (req, res) => {
+// CAIXA
+app.get("/caixa/abrir", auth, (req, res) => {
     caixaAberto = true;
     vendas = [];
     res.redirect("/pdv");
 });
 
-// 🔥 FECHAR CAIXA
-app.get("/caixa/fechar", (req, res) => {
+app.get("/caixa/fechar", auth, (req, res) => {
     let total = vendas.reduce((s, v) => s + v.total, 0);
-
     caixaAberto = false;
 
-    res.send(`
-        <h2>Caixa Fechado</h2>
-        <h1>Total do Dia: R$ ${total.toFixed(2)}</h1>
-        <a href="/caixa/abrir">Abrir novamente</a>
-    `);
+    res.send(`<h1>Total do Dia: R$ ${total.toFixed(2)}</h1>`);
 });
 
 // PDV
-app.get("/pdv", (req, res) => {
+app.get("/pdv", auth, (req, res) => {
     res.render("pdv", { produtos });
 });
 
-// FINALIZAR VENDA
-app.post("/finalizar", (req, res) => {
+// FINALIZAR
+app.post("/finalizar", auth, (req, res) => {
     const total = parseFloat(req.body.total);
 
-    if (!caixaAberto) {
-        return res.send("Abra o caixa primeiro");
-    }
-
-    if (!total || total <= 0) {
-        return res.send("Adicione produto antes de finalizar");
-    }
+    if (!caixaAberto) return res.send("Abra o caixa");
 
     vendas.push({ total });
 
@@ -80,17 +111,16 @@ app.post("/finalizar", (req, res) => {
 });
 
 // RELATÓRIO
-app.get("/relatorio", (req, res) => {
+app.get("/relatorio", auth, (req, res) => {
     res.render("relatorio", { vendas });
 });
 
 app.get("/", (req, res) => {
-    res.redirect("/dashboard");
+    res.redirect("/login");
 });
 
-// PORTA
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
-    console.log("🚀 SISTEMA VENDÁVEL RODANDO");
+    console.log("🚀 SaaS rodando");
 });

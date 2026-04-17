@@ -1,10 +1,19 @@
-<link rel="stylesheet" href="/css/style.css">
+<!DOCTYPE html>
+<html>
+<head>
+<title>Login</title>
+</head>
 
-<div class="container">
-    <div class="card">
-        <h2>Login</h2>
-        <input placeholder="Usuário">
-        <input placeholder="Senha">
-        <button>Entrar</button>
-    </div>
-</div>
+<body style="background:#0b1a2f; color:white; font-family:Arial; display:flex; justify-content:center; align-items:center; height:100vh;">
+
+<form method="POST" action="/login" style="background:#1e2f4d; padding:30px; border-radius:10px;">
+    <h2>Login PDV</h2>
+
+    <input name="user" placeholder="Usuário" required style="display:block; margin:10px; padding:10px;">
+    <input name="pass" type="password" placeholder="Senha" required style="display:block; margin:10px; padding:10px;">
+
+    <button style="padding:10px; width:100%;">Entrar</button>
+</form>
+
+</body>
+</html>
