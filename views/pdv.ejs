@@ -1,127 +1,97 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>PDV</title>
+<title>PDV</title>
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial;
-            background: #0b1a2f;
-            color: white;
-        }
+<style>
+body { margin:0; font-family:Arial; background:#0b1a2f; color:white; }
+.container { display:flex; height:100vh; }
 
-        .container {
-            display: flex;
-            height: 100vh;
-        }
+.produtos {
+    width:60%;
+    padding:20px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+}
 
-        /* PRODUTOS */
-        .produtos {
-            width: 60%;
-            padding: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            overflow-y: auto;
-        }
+.produto {
+    background:#1e2f4d;
+    padding:20px;
+    border-radius:10px;
+    width:140px;
+    text-align:center;
+    cursor:pointer;
+}
 
-        .produto {
-            background: #1e2f4d;
-            padding: 20px;
-            border-radius: 10px;
-            width: 140px;
-            text-align: center;
-            cursor: pointer;
-            font-size: 18px;
-        }
+.produto:hover { background:#2e4a7a; }
 
-        .produto:hover {
-            background: #2e4a7a;
-        }
+.caixa {
+    width:40%;
+    background:#111827;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+}
 
-        /* CAIXA */
-        .caixa {
-            width: 40%;
-            background: #111827;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
+.item {
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:10px;
+}
 
-        .carrinho {
-            flex: 1;
-            overflow-y: auto;
-        }
+.total {
+    font-size:35px;
+    margin:20px 0;
+}
 
-        .item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 18px;
-        }
-
-        .total {
-            font-size: 40px;
-            font-weight: bold;
-            margin: 20px 0;
-        }
-
-        button {
-            padding: 15px;
-            font-size: 18px;
-            border: none;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .finalizar {
-            background: #22c55e;
-            color: black;
-        }
-
-        .cancelar {
-            background: #ef4444;
-            color: white;
-        }
-    </style>
+button {
+    padding:12px;
+    margin-top:5px;
+    cursor:pointer;
+}
+</style>
 </head>
 
 <body>
 
+<div style="padding:10px;">
+    <a href="/caixa/abrir"><button>Abrir Caixa</button></a>
+    <a href="/caixa/fechar"><button>Fechar Caixa</button></a>
+</div>
+
 <div class="container">
 
-    <!-- PRODUTOS -->
-    <div class="produtos">
-        <% produtos.forEach(p => { %>
-            <div class="produto" onclick="addProduto('<%= p.nome %>', <%= p.preco %>)">
-                <strong><%= p.nome %></strong><br>
-                R$ <%= p.preco %>
-            </div>
-        <% }) %>
-    </div>
+<div class="produtos">
+<% produtos.forEach(p => { %>
+<div class="produto" onclick="addProduto('<%= p.nome %>', <%= p.preco %>)">
+<strong><%= p.nome %></strong><br>
+R$ <%= p.preco %>
+</div>
+<% }) %>
+</div>
 
-    <!-- CAIXA -->
-    <div class="caixa">
-        <h2>🛒 Caixa</h2>
+<div class="caixa">
 
-        <div class="carrinho" id="lista"></div>
+<h2>Caixa</h2>
 
-        <div class="total">
-            R$ <span id="total">0.00</span>
-        </div>
+<div id="lista"></div>
 
-        <form method="POST" action="/finalizar">
-            <input type="hidden" name="total" id="totalInput">
-            <button class="finalizar">Finalizar Venda</button>
-        </form>
+<div class="total">
+R$ <span id="total">0</span>
+</div>
 
-        <button class="cancelar" onclick="limpar()">Cancelar</button>
-    </div>
+<form method="POST" action="/finalizar">
+<input type="hidden" name="total" id="totalInput">
+<button>Finalizar Venda</button>
+</form>
+
+<button onclick="limpar()">Cancelar</button>
 
 </div>
 
-<!-- SOM -->
+</div>
+
 <audio id="bip" src="https://www.soundjay.com/buttons/sounds/beep-07.mp3"></audio>
 
 <script>
@@ -139,7 +109,7 @@ function addProduto(nome, preco) {
     if (item) {
         item.qtd++;
     } else {
-        carrinho.push({ nome, preco, qtd: 1 });
+        carrinho.push({ nome, preco, qtd:1 });
     }
 
     total += preco;
@@ -151,13 +121,13 @@ function addProduto(nome, preco) {
 function atualizar() {
     lista.innerHTML = "";
 
-    carrinho.forEach((p, i) => {
+    carrinho.forEach(p => {
         let div = document.createElement("div");
         div.className = "item";
 
         div.innerHTML = `
-            <span>${p.nome} x${p.qtd}</span>
-            <span>R$ ${(p.preco * p.qtd).toFixed(2)}</span>
+        <span>${p.nome} x${p.qtd}</span>
+        <span>R$ ${(p.preco*p.qtd).toFixed(2)}</span>
         `;
 
         lista.appendChild(div);
@@ -167,7 +137,7 @@ function atualizar() {
     totalInput.value = total;
 }
 
-function limpar() {
+function limpar(){
     carrinho = [];
     total = 0;
     atualizar();

@@ -1,16 +1,20 @@
-<link rel="stylesheet" href="/css/style.css">
+<h2>Relatório de Vendas</h2>
 
-<div class="container">
+<table border="1" cellpadding="10">
+<tr>
+<th>#</th>
+<th>Valor</th>
+</tr>
 
-<div class="card">
-<h2>Relatório</h2>
+<% let total = 0; %>
 
-<ul>
-<% vendas.forEach(v => { %>
-<li>R$ <%= v.total %> - <%= v.data %></li>
+<% vendas.forEach((v,i)=>{ total += v.total; %>
+<tr>
+<td><%= i+1 %></td>
+<td>R$ <%= v.total %></td>
+</tr>
 <% }) %>
-</ul>
 
-</div>
+</table>
 
-</div>
+<h2>Total: R$ <%= total.toFixed(2) %></h2>

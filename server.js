@@ -10,9 +10,10 @@ app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// 🔥 BANCO TEMPORÁRIO
+// 🔥 DADOS (TEMPORÁRIO)
 let produtos = [];
 let vendas = [];
+let caixaAberto = false;
 
 // DASHBOARD
 app.get("/dashboard", (req, res) => {
@@ -28,16 +29,32 @@ app.get("/produtos", (req, res) => {
 app.post("/produtos", (req, res) => {
     const { nome, preco } = req.body;
 
-    if (!nome || !preco) {
-        return res.send("Preencha tudo");
-    }
-
     produtos.push({
         nome: nome.trim(),
         preco: parseFloat(preco)
     });
 
     res.redirect("/produtos");
+});
+
+// 🔥 ABRIR CAIXA
+app.get("/caixa/abrir", (req, res) => {
+    caixaAberto = true;
+    vendas = [];
+    res.redirect("/pdv");
+});
+
+// 🔥 FECHAR CAIXA
+app.get("/caixa/fechar", (req, res) => {
+    let total = vendas.reduce((s, v) => s + v.total, 0);
+
+    caixaAberto = false;
+
+    res.send(`
+        <h2>Caixa Fechado</h2>
+        <h1>Total do Dia: R$ ${total.toFixed(2)}</h1>
+        <a href="/caixa/abrir">Abrir novamente</a>
+    `);
 });
 
 // PDV
@@ -48,6 +65,10 @@ app.get("/pdv", (req, res) => {
 // FINALIZAR VENDA
 app.post("/finalizar", (req, res) => {
     const total = parseFloat(req.body.total);
+
+    if (!caixaAberto) {
+        return res.send("Abra o caixa primeiro");
+    }
 
     if (!total || total <= 0) {
         return res.send("Adicione produto antes de finalizar");
@@ -67,9 +88,9 @@ app.get("/", (req, res) => {
     res.redirect("/dashboard");
 });
 
-// PORTA RENDER
+// PORTA
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
-    console.log("🚀 SERVIDOR ONLINE");
+    console.log("🚀 SISTEMA VENDÁVEL RODANDO");
 });
