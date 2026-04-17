@@ -3,11 +3,10 @@ const express = require("express");
 const mysql = require("mysql2");
 const session = require("express-session");
 const path = require("path");
-const mercadopago = require("mercadopago");
 
 const app = express();
 
-// 🔥 CONFIG
+// CONFIG
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
@@ -21,22 +20,17 @@ app.use(session({
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// 🔥 BANCO
+// BANCO
 const db = mysql.createPool(process.env.MYSQL_URL);
 
-// 🔥 MERCADO PAGO
-mercadopago.configure({
-    access_token: process.env.MP_TOKEN
-});
-
-// 🔥 PLANOS
+// PLANOS
 const planos = {
     basico: { limiteProdutos: 50, valor: 29 },
     pro: { limiteProdutos: 9999, valor: 49 },
     premium: { limiteProdutos: 9999, valor: 79 }
 };
 
-// 🔥 TABELAS
+// TABELAS
 db.query(`
 CREATE TABLE IF NOT EXISTS empresas (
  id INT AUTO_INCREMENT PRIMARY KEY,
@@ -79,17 +73,17 @@ CREATE TABLE IF NOT EXISTS itens_venda (
  qtd INT
 )`);
 
-// 🔥 DADOS INICIAIS
+// DADOS INICIAIS
 db.query(`INSERT IGNORE INTO empresas (id,nome,vencimento) VALUES (1,'Empresa Demo',DATE_ADD(CURDATE(),INTERVAL 30 DAY))`);
 db.query(`INSERT IGNORE INTO usuarios (id,user,pass,empresa_id) VALUES (1,'admin','1234',1)`);
 
-// 🔒 AUTH
+// AUTH
 function auth(req,res,next){
     if(!req.session.user) return res.redirect("/login");
     next();
 }
 
-// 🔒 CHECK PLANO
+// VERIFICAR PLANO
 function checkEmpresa(req,res,next){
     db.query(
         "SELECT * FROM empresas WHERE id=?",
@@ -141,7 +135,7 @@ app.get("/logout",(req,res)=>{
 
 app.get("/",(req,res)=>res.redirect("/login"));
 
-// PRODUTOS COM LIMITE
+// PRODUTOS
 app.get("/produtos",auth,checkEmpresa,(req,res)=>{
     db.query(
         "SELECT * FROM produtos WHERE empresa_id=?",
@@ -192,7 +186,7 @@ app.post("/buscar-produto",auth,checkEmpresa,(req,res)=>{
     );
 });
 
-// FINALIZAR
+// FINALIZAR VENDA
 app.post("/finalizar",auth,checkEmpresa,(req,res)=>{
     const { total, itens } = req.body;
 
@@ -224,57 +218,65 @@ app.get("/relatorio",auth,checkEmpresa,(req,res)=>{
     );
 });
 
-// 🔥 TELA PLANOS
+// PLANOS
 app.get("/planos",auth,(req,res)=>{
     res.render("planos",{planos});
 });
 
-// 🔥 PAGAMENTO PIX
+// PAGAMENTO PIX
 app.get("/pagar/:plano",auth,(req,res)=>{
-
     const plano = req.params.plano;
-    const valor = planos[plano].valor;
 
-    mercadopago.payment.create({
-        transaction_amount: valor,
-        description: "Plano " + plano,
-        payment_method_id: "pix",
-        payer:{ email:"cliente@email.com" }
-    }).then(resp=>{
-
-        const qr = resp.body.point_of_interaction.transaction_data.qr_code_base64;
-
-        res.send(`
-            <h2>Pague o plano ${plano}</h2>
-            <img src="data:image/png;base64,${qr}">
-        `);
+    res.render("pagar",{
+        plano,
+        valor: planos[plano].valor
     });
 });
 
-// 🔥 WEBHOOK
-app.post("/webhook",(req,res)=>{
+// ADMIN
+app.get("/admin",(req,res)=>{
+    db.query("SELECT * FROM empresas",(err,empresas)=>{
+        res.render("admin",{empresas});
+    });
+});
 
-    if(req.body.type==="payment"){
-        const id = req.body.data.id;
+app.post("/admin/criar",(req,res)=>{
+    const { nome,user,pass } = req.body;
 
-        mercadopago.payment.findById(id)
-        .then(resp=>{
+    db.query(
+        "INSERT INTO empresas (nome,vencimento) VALUES (?,DATE_ADD(CURDATE(),INTERVAL 30 DAY))",
+        [nome],
+        (err,result)=>{
 
-            if(resp.body.status==="approved"){
+            const empresaId = result.insertId;
 
-                const venc = new Date();
-                venc.setDate(venc.getDate()+30);
+            db.query(
+                "INSERT INTO usuarios (user,pass,empresa_id) VALUES (?,?,?)",
+                [user,pass,empresaId],
+                ()=>res.redirect("/admin")
+            );
+        }
+    );
+});
 
-                db.query(
-                    "UPDATE empresas SET status='ativa', vencimento=? WHERE id=?",
-                    [venc, req.session.empresa]
-                );
-            }
-        });
-    }
+app.get("/admin/bloquear/:id",(req,res)=>{
+    db.query(
+        "UPDATE empresas SET status='bloqueada' WHERE id=?",
+        [req.params.id],
+        ()=>res.redirect("/admin")
+    );
+});
 
-    res.sendStatus(200);
+app.get("/admin/ativar/:id",(req,res)=>{
+    const venc = new Date();
+    venc.setDate(venc.getDate()+30);
+
+    db.query(
+        "UPDATE empresas SET status='ativa', vencimento=? WHERE id=?",
+        [venc, req.params.id],
+        ()=>res.redirect("/admin")
+    );
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT,()=>console.log("🚀 SISTEMA COMPLETO"));
+app.listen(PORT,()=>console.log("🚀 SISTEMA SAAS FINAL RODANDO"));
