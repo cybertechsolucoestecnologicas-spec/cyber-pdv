@@ -1,27 +1,34 @@
 require('dotenv').config();
 const express = require("express");
 const mysql = require("mysql2");
+const session = require("express-session");
 const path = require("path");
 
 const app = express();
 
+// MIDDLEWARE
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(express.static("public"));
+
+app.use(session({
+    secret: "pdv_saas_secret",
+    resave: false,
+    saveUninitialized: true
+}));
+
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-const db = mysql.createConnection(process.env.MYSQL_URL);
+// CONEXÃO
+const db = mysql.createPool(process.env.MYSQL_URL);
 
-db.connect(err => {
-    if (err) console.log("ERRO:", err);
-    else console.log("✅ BANCO OK");
-});
-
-// 🔥 TABELAS SAAS
+// 🔥 TABELAS
 db.query(`
 CREATE TABLE IF NOT EXISTS empresas (
  id INT AUTO_INCREMENT PRIMARY KEY,
- nome VARCHAR(255)
+ nome VARCHAR(255),
+ status VARCHAR(50) DEFAULT 'ativa'
 )`);
 
 db.query(`
@@ -57,21 +64,18 @@ CREATE TABLE IF NOT EXISTS itens_venda (
  qtd INT
 )`);
 
-// 🔥 CRIA EMPRESA + USUARIO PADRÃO
-db.query(`INSERT IGNORE INTO empresas (id, nome) VALUES (1, 'Empresa Teste')`);
+// 🔥 USUÁRIO PADRÃO
+db.query(`INSERT IGNORE INTO empresas (id, nome) VALUES (1, 'Empresa Demo')`);
+db.query(`INSERT IGNORE INTO usuarios (id, user, pass, empresa_id) VALUES (1,'admin','1234',1)`);
 
-db.query(`
-INSERT IGNORE INTO usuarios (id, user, pass, empresa_id)
-VALUES (1, 'admin', '1234', 1)
-`);
-
-// 🔐 CONTROLE SIMPLES (GLOBAL)
-let empresaAtual = null;
+// 🔒 PROTEÇÃO
+function auth(req, res, next){
+    if(!req.session.user) return res.redirect("/login");
+    next();
+}
 
 // LOGIN
-app.get("/login", (req, res) => {
-    res.render("login");
-});
+app.get("/login", (req, res) => res.render("login"));
 
 app.post("/login", (req, res) => {
     const { user, pass } = req.body;
@@ -80,8 +84,9 @@ app.post("/login", (req, res) => {
         "SELECT * FROM usuarios WHERE user=? AND pass=?",
         [user, pass],
         (err, result) => {
-            if (result.length > 0) {
-                empresaAtual = result[0].empresa_id;
+            if(result.length > 0){
+                req.session.user = result[0];
+                req.session.empresa = result[0].empresa_id;
                 res.redirect("/pdv");
             } else {
                 res.send("Login inválido");
@@ -90,82 +95,88 @@ app.post("/login", (req, res) => {
     );
 });
 
+app.get("/logout", (req,res)=>{
+    req.session.destroy();
+    res.redirect("/login");
+});
+
 // HOME
-app.get("/", (req, res) => res.redirect("/login"));
+app.get("/", (req,res)=>res.redirect("/login"));
 
 // PRODUTOS
-app.get("/produtos", (req, res) => {
+app.get("/produtos", auth, (req,res)=>{
     db.query(
         "SELECT * FROM produtos WHERE empresa_id=?",
-        [empresaAtual],
-        (err, produtos) => {
-            res.render("produtos", { produtos });
+        [req.session.empresa],
+        (err, produtos)=>{
+            res.render("produtos",{produtos});
         }
     );
 });
 
-app.post("/produtos", (req, res) => {
+app.post("/produtos", auth, (req,res)=>{
     const { nome, preco } = req.body;
 
     db.query(
-        "INSERT INTO produtos (nome, preco, empresa_id) VALUES (?, ?, ?)",
-        [nome.toUpperCase(), preco, empresaAtual],
-        () => res.redirect("/produtos")
+        "INSERT INTO produtos (nome,preco,empresa_id) VALUES (?,?,?)",
+        [nome.toUpperCase(), preco, req.session.empresa],
+        ()=>res.redirect("/produtos")
     );
 });
 
 // PDV
-app.get("/pdv", (req, res) => {
+app.get("/pdv", auth, (req,res)=>{
     res.render("pdv");
 });
 
 // BUSCAR PRODUTO
-app.post("/buscar-produto", (req, res) => {
+app.post("/buscar-produto", auth, (req,res)=>{
     const nome = req.body.nome;
 
     db.query(
         "SELECT * FROM produtos WHERE nome=? AND empresa_id=?",
-        [nome.toUpperCase(), empresaAtual],
-        (err, result) => {
-            if (result.length > 0) res.json(result[0]);
+        [nome.toUpperCase(), req.session.empresa],
+        (err,result)=>{
+            if(result.length>0) res.json(result[0]);
             else res.json(null);
         }
     );
 });
 
 // FINALIZAR VENDA
-app.post("/finalizar", (req, res) => {
+app.post("/finalizar", auth, (req,res)=>{
     const { total, itens } = req.body;
 
     db.query(
-        "INSERT INTO vendas (total, empresa_id) VALUES (?, ?)",
-        [total, empresaAtual],
-        (err, result) => {
+        "INSERT INTO vendas (total,empresa_id) VALUES (?,?)",
+        [total, req.session.empresa],
+        (err,result)=>{
 
             const vendaId = result.insertId;
 
-            itens.forEach(item => {
+            itens.forEach(item=>{
                 db.query(
-                    "INSERT INTO itens_venda (venda_id, nome, preco, qtd) VALUES (?, ?, ?, ?)",
-                    [vendaId, item.nome, item.preco, item.qtd]
+                    "INSERT INTO itens_venda (venda_id,nome,preco,qtd) VALUES (?,?,?,?)",
+                    [vendaId,item.nome,item.preco,item.qtd]
                 );
             });
 
-            res.send("Venda salva");
+            res.json({ok:true});
         }
     );
 });
 
-// RELATORIO
-app.get("/relatorio", (req, res) => {
+// RELATÓRIO
+app.get("/relatorio", auth, (req,res)=>{
     db.query(
         "SELECT * FROM vendas WHERE empresa_id=? ORDER BY id DESC",
-        [empresaAtual],
-        (err, vendas) => {
-            res.render("relatorio", { vendas });
+        [req.session.empresa],
+        (err,vendas)=>{
+            res.render("relatorio",{vendas});
         }
     );
 });
 
+// START
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("🔥 SaaS rodando"));
+app.listen(PORT, ()=>console.log("🚀 SaaS rodando"));
