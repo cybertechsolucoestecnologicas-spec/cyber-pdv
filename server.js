@@ -1,126 +1,142 @@
+require('dotenv').config();
 const express = require("express");
+const mysql = require("mysql2");
 const path = require("path");
-const session = require("express-session");
 
 const app = express();
 
+// CONFIG
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
-
-app.use(session({
-    secret: "pdv-secret",
-    resave: false,
-    saveUninitialized: true
-}));
-
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// 🔥 USUÁRIO FIXO (ADMIN)
-const usuario = {
-    user: "admin",
-    pass: "1234"
-};
+// CONEXÃO BANCO (USA MYSQL_URL)
+const db = mysql.createConnection(process.env.MYSQL_URL);
 
-// DADOS
-let produtos = [];
-let vendas = [];
-let caixaAberto = false;
-
-// 🔒 MIDDLEWARE LOGIN
-function auth(req, res, next) {
-    if (!req.session.logado) {
-        return res.redirect("/login");
+db.connect(err => {
+    if (err) {
+        console.error("❌ ERRO BANCO:", err);
+    } else {
+        console.log("✅ BANCO CONECTADO");
     }
-    next();
-}
-
-// LOGIN
-app.get("/login", (req, res) => {
-    res.render("login");
 });
 
-app.post("/login", (req, res) => {
-    const { user, pass } = req.body;
+// 🔥 CRIAR TABELAS AUTOMATICAMENTE
+db.query(`
+CREATE TABLE IF NOT EXISTS produtos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255),
+    preco DECIMAL(10,2)
+)`);
 
-    if (user === usuario.user && pass === usuario.pass) {
-        req.session.logado = true;
-        return res.redirect("/dashboard");
-    }
+db.query(`
+CREATE TABLE IF NOT EXISTS vendas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    total DECIMAL(10,2),
+    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`);
 
-    res.send("Login inválido");
-});
+// ROTAS
 
-// LOGOUT
-app.get("/logout", (req, res) => {
-    req.session.destroy();
-    res.redirect("/login");
-});
-
-// DASHBOARD
-app.get("/dashboard", auth, (req, res) => {
-    let total = vendas.reduce((s, v) => s + v.total, 0);
-    res.render("dashboard", { total });
-});
-
-// PRODUTOS
-app.get("/produtos", auth, (req, res) => {
-    res.render("produtos", { produtos });
-});
-
-app.post("/produtos", auth, (req, res) => {
-    const { nome, preco } = req.body;
-
-    produtos.push({
-        nome: nome.trim(),
-        preco: parseFloat(preco)
-    });
-
-    res.redirect("/produtos");
-});
-
-// CAIXA
-app.get("/caixa/abrir", auth, (req, res) => {
-    caixaAberto = true;
-    vendas = [];
+// HOME
+app.get("/", (req, res) => {
     res.redirect("/pdv");
 });
 
-app.get("/caixa/fechar", auth, (req, res) => {
-    let total = vendas.reduce((s, v) => s + v.total, 0);
-    caixaAberto = false;
+// PRODUTOS
+app.get("/produtos", (req, res) => {
+    db.query("SELECT * FROM produtos", (err, produtos) => {
+        if (err) {
+            console.log(err);
+            return res.send("Erro ao buscar produtos");
+        }
+        res.render("produtos", { produtos });
+    });
+});
 
-    res.send(`<h1>Total do Dia: R$ ${total.toFixed(2)}</h1>`);
+app.post("/produtos", (req, res) => {
+    const { nome, preco } = req.body;
+
+    if (!nome || !preco) {
+        return res.send("Preencha todos os campos");
+    }
+
+    db.query(
+        "INSERT INTO produtos (nome, preco) VALUES (?, ?)",
+        [nome.toUpperCase(), preco],
+        (err) => {
+            if (err) {
+                console.log(err);
+                return res.send("Erro ao salvar produto");
+            }
+            res.redirect("/produtos");
+        }
+    );
 });
 
 // PDV
-app.get("/pdv", auth, (req, res) => {
-    res.render("pdv", { produtos });
+app.get("/pdv", (req, res) => {
+    res.render("pdv");
 });
 
-// FINALIZAR
-app.post("/finalizar", auth, (req, res) => {
-    const total = parseFloat(req.body.total);
+// BUSCAR PRODUTO (PDV)
+app.post("/buscar-produto", (req, res) => {
+    const nome = req.body.nome;
 
-    if (!caixaAberto) return res.send("Abra o caixa");
+    db.query(
+        "SELECT * FROM produtos WHERE nome = ?",
+        [nome.toUpperCase()],
+        (err, result) => {
+            if (err) {
+                console.log(err);
+                return res.json(null);
+            }
 
-    vendas.push({ total });
-
-    res.redirect("/dashboard");
+            if (result.length > 0) {
+                res.json(result[0]);
+            } else {
+                res.json(null);
+            }
+        }
+    );
 });
 
-// RELATÓRIO
-app.get("/relatorio", auth, (req, res) => {
-    res.render("relatorio", { vendas });
+// FINALIZAR VENDA
+app.post("/finalizar", (req, res) => {
+    const { total } = req.body;
+
+    if (!total || total <= 0) {
+        return res.send("Adicione produto antes de finalizar");
+    }
+
+    db.query(
+        "INSERT INTO vendas (total) VALUES (?)",
+        [total],
+        (err) => {
+            if (err) {
+                console.log(err);
+                return res.send("Erro ao finalizar venda");
+            }
+
+            res.send("Venda finalizada com sucesso");
+        }
+    );
 });
 
-app.get("/", (req, res) => {
-    res.redirect("/login");
+// DASHBOARD SIMPLES
+app.get("/dashboard", (req, res) => {
+    db.query(
+        "SELECT SUM(total) as total FROM vendas",
+        (err, result) => {
+            const total = result[0].total || 0;
+            res.render("dashboard", { total });
+        }
+    );
 });
 
+// START
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, "0.0.0.0", () => {
-    console.log("🚀 SaaS rodando");
+app.listen(PORT, () => {
+    console.log("🚀 SERVIDOR RODANDO NA PORTA " + PORT);
 });
