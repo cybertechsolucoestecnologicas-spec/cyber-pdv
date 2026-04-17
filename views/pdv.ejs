@@ -2,78 +2,126 @@
 <html>
 <head>
     <title>PDV</title>
+
     <style>
         body {
+            margin: 0;
+            font-family: Arial;
             background: #0b1a2f;
             color: white;
-            font-family: Arial;
-            padding: 20px;
         }
 
-        h2 {
-            margin-bottom: 20px;
+        .container {
+            display: flex;
+            height: 100vh;
         }
 
+        /* PRODUTOS */
         .produtos {
+            width: 60%;
+            padding: 20px;
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
+            overflow-y: auto;
         }
 
         .produto {
             background: #1e2f4d;
-            padding: 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 120px;
+            padding: 20px;
+            border-radius: 10px;
+            width: 140px;
             text-align: center;
+            cursor: pointer;
+            font-size: 18px;
         }
 
         .produto:hover {
             background: #2e4a7a;
         }
 
+        /* CAIXA */
+        .caixa {
+            width: 40%;
+            background: #111827;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
         .carrinho {
-            margin-top: 30px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .total {
+            font-size: 40px;
+            font-weight: bold;
+            margin: 20px 0;
         }
 
         button {
-            padding: 10px 20px;
-            background: #22c55e;
+            padding: 15px;
+            font-size: 18px;
             border: none;
-            color: black;
             cursor: pointer;
             margin-top: 10px;
+        }
+
+        .finalizar {
+            background: #22c55e;
+            color: black;
+        }
+
+        .cancelar {
+            background: #ef4444;
+            color: white;
         }
     </style>
 </head>
 
 <body>
 
-<h2>🛒 PDV</h2>
+<div class="container">
 
-<div class="produtos">
-    <% produtos.forEach(p => { %>
-        <div class="produto" onclick="addProduto('<%= p.nome %>', <%= p.preco %>)">
-            <strong><%= p.nome %></strong><br>
-            R$ <%= p.preco %>
+    <!-- PRODUTOS -->
+    <div class="produtos">
+        <% produtos.forEach(p => { %>
+            <div class="produto" onclick="addProduto('<%= p.nome %>', <%= p.preco %>)">
+                <strong><%= p.nome %></strong><br>
+                R$ <%= p.preco %>
+            </div>
+        <% }) %>
+    </div>
+
+    <!-- CAIXA -->
+    <div class="caixa">
+        <h2>🛒 Caixa</h2>
+
+        <div class="carrinho" id="lista"></div>
+
+        <div class="total">
+            R$ <span id="total">0.00</span>
         </div>
-    <% }) %>
+
+        <form method="POST" action="/finalizar">
+            <input type="hidden" name="total" id="totalInput">
+            <button class="finalizar">Finalizar Venda</button>
+        </form>
+
+        <button class="cancelar" onclick="limpar()">Cancelar</button>
+    </div>
+
 </div>
 
-<div class="carrinho">
-    <h3>Carrinho</h3>
-    <ul id="lista"></ul>
-
-    <h2>Total: R$ <span id="total">0</span></h2>
-
-    <form method="POST" action="/finalizar">
-        <input type="hidden" name="total" id="totalInput">
-        <button type="submit">Finalizar Venda</button>
-    </form>
-</div>
-
-<!-- 🔊 SOM DE BIP -->
+<!-- SOM -->
 <audio id="bip" src="https://www.soundjay.com/buttons/sounds/beep-07.mp3"></audio>
 
 <script>
@@ -86,32 +134,43 @@ const totalInput = document.getElementById("totalInput");
 const bip = document.getElementById("bip");
 
 function addProduto(nome, preco) {
-    carrinho.push({ nome, preco });
+    let item = carrinho.find(p => p.nome === nome);
+
+    if (item) {
+        item.qtd++;
+    } else {
+        carrinho.push({ nome, preco, qtd: 1 });
+    }
+
     total += preco;
+    bip.play();
 
-    bip.play(); // 🔊 som
-
-    atualizarTela();
+    atualizar();
 }
 
-function atualizarTela() {
+function atualizar() {
     lista.innerHTML = "";
 
     carrinho.forEach((p, i) => {
-        let li = document.createElement("li");
-        li.innerHTML = `${p.nome} - R$ ${p.preco} 
-        <button onclick="remover(${i})">X</button>`;
-        lista.appendChild(li);
+        let div = document.createElement("div");
+        div.className = "item";
+
+        div.innerHTML = `
+            <span>${p.nome} x${p.qtd}</span>
+            <span>R$ ${(p.preco * p.qtd).toFixed(2)}</span>
+        `;
+
+        lista.appendChild(div);
     });
 
     totalSpan.innerText = total.toFixed(2);
     totalInput.value = total;
 }
 
-function remover(index) {
-    total -= carrinho[index].preco;
-    carrinho.splice(index, 1);
-    atualizarTela();
+function limpar() {
+    carrinho = [];
+    total = 0;
+    atualizar();
 }
 </script>
 
