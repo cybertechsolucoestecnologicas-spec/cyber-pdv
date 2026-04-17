@@ -1,81 +1,23 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Relatório</title>
+<h2>Relatório de Vendas</h2>
 
-<style>
-body{
-    background:#0f172a;
-    color:white;
-    font-family:Arial;
-}
-.container{
-    max-width:900px;
-    margin:auto;
-    padding:20px;
-}
-.card{
-    background:#1e293b;
-    padding:20px;
-    border-radius:10px;
-}
-table{
-    width:100%;
-    border-collapse:collapse;
-    margin-top:20px;
-}
-th,td{
-    padding:10px;
-    border-bottom:1px solid #333;
-}
-.total{
-    font-size:22px;
-    margin-top:20px;
-}
-</style>
-
-</head>
-<body>
-
-<div class="container">
-<div class="card">
-
-<h2>📊 Relatório de Vendas</h2>
-
-<table>
+<table border="1">
 <tr>
-<th>ID</th>
+<th>#</th>
 <th>Valor</th>
 </tr>
 
 <% let total = 0; %>
 
-<% if(vendas && vendas.length){ %>
-
-    <% vendas.forEach(v=>{ %>
-        <% total += Number(v.total || 0); %>
-        <tr>
-            <td>#<%= v.id %></td>
-            <td>R$ <%= Number(v.total).toFixed(2) %></td>
-        </tr>
-    <% }) %>
-
-<% } else { %>
-
+<% vendas.forEach(function(v, i){ %>
 <tr>
-<td colspan="2">Nenhuma venda encontrada</td>
+<td><%= i+1 %></td>
+<td>R$ <%= v.total %></td>
 </tr>
 
-<% } %>
+<% total += Number(v.total); %>
+
+<% }) %>
 
 </table>
 
-<div class="total">
-Total: R$ <%= total.toFixed(2) %>
-</div>
-
-</div>
-</div>
-
-</body>
-</html>
+<h3>Total: R$ <%= total %></h3>
