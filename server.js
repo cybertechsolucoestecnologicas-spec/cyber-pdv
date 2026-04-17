@@ -6,13 +6,12 @@ const path = require("path");
 
 const app = express();
 
-// MIDDLEWARE
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static("public"));
 
 app.use(session({
-    secret: "pdv_saas_secret",
+    secret: "saas-secret",
     resave: false,
     saveUninitialized: true
 }));
@@ -20,7 +19,6 @@ app.use(session({
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// CONEXÃO
 const db = mysql.createPool(process.env.MYSQL_URL);
 
 // 🔥 TABELAS
@@ -64,27 +62,41 @@ CREATE TABLE IF NOT EXISTS itens_venda (
  qtd INT
 )`);
 
-// 🔥 USUÁRIO PADRÃO
-db.query(`INSERT IGNORE INTO empresas (id, nome) VALUES (1, 'Empresa Demo')`);
-db.query(`INSERT IGNORE INTO usuarios (id, user, pass, empresa_id) VALUES (1,'admin','1234',1)`);
+// 🔥 USER PADRÃO
+db.query(`INSERT IGNORE INTO empresas (id,nome) VALUES (1,'Empresa Demo')`);
+db.query(`INSERT IGNORE INTO usuarios (id,user,pass,empresa_id) VALUES (1,'admin','1234',1)`);
 
-// 🔒 PROTEÇÃO
-function auth(req, res, next){
+// 🔒 AUTH
+function auth(req,res,next){
     if(!req.session.user) return res.redirect("/login");
     next();
 }
 
-// LOGIN
-app.get("/login", (req, res) => res.render("login"));
+// 🔒 BLOQUEIO
+function checkEmpresa(req,res,next){
+    db.query(
+        "SELECT status FROM empresas WHERE id=?",
+        [req.session.empresa],
+        (err,result)=>{
+            if(result[0].status !== "ativa"){
+                return res.send("⚠️ Pagamento pendente");
+            }
+            next();
+        }
+    );
+}
 
-app.post("/login", (req, res) => {
+// LOGIN
+app.get("/login",(req,res)=>res.render("login"));
+
+app.post("/login",(req,res)=>{
     const { user, pass } = req.body;
 
     db.query(
         "SELECT * FROM usuarios WHERE user=? AND pass=?",
-        [user, pass],
-        (err, result) => {
-            if(result.length > 0){
+        [user,pass],
+        (err,result)=>{
+            if(result.length>0){
                 req.session.user = result[0];
                 req.session.empresa = result[0].empresa_id;
                 res.redirect("/pdv");
@@ -95,47 +107,44 @@ app.post("/login", (req, res) => {
     );
 });
 
-app.get("/logout", (req,res)=>{
+app.get("/logout",(req,res)=>{
     req.session.destroy();
     res.redirect("/login");
 });
 
-// HOME
-app.get("/", (req,res)=>res.redirect("/login"));
+app.get("/",(req,res)=>res.redirect("/login"));
 
 // PRODUTOS
-app.get("/produtos", auth, (req,res)=>{
+app.get("/produtos",auth,checkEmpresa,(req,res)=>{
     db.query(
         "SELECT * FROM produtos WHERE empresa_id=?",
         [req.session.empresa],
-        (err, produtos)=>{
+        (err,produtos)=>{
             res.render("produtos",{produtos});
         }
     );
 });
 
-app.post("/produtos", auth, (req,res)=>{
+app.post("/produtos",auth,checkEmpresa,(req,res)=>{
     const { nome, preco } = req.body;
 
     db.query(
         "INSERT INTO produtos (nome,preco,empresa_id) VALUES (?,?,?)",
-        [nome.toUpperCase(), preco, req.session.empresa],
+        [nome.toUpperCase(),preco,req.session.empresa],
         ()=>res.redirect("/produtos")
     );
 });
 
 // PDV
-app.get("/pdv", auth, (req,res)=>{
-    res.render("pdv");
-});
+app.get("/pdv",auth,checkEmpresa,(req,res)=>res.render("pdv"));
 
 // BUSCAR PRODUTO
-app.post("/buscar-produto", auth, (req,res)=>{
+app.post("/buscar-produto",auth,checkEmpresa,(req,res)=>{
     const nome = req.body.nome;
 
     db.query(
         "SELECT * FROM produtos WHERE nome=? AND empresa_id=?",
-        [nome.toUpperCase(), req.session.empresa],
+        [nome.toUpperCase(),req.session.empresa],
         (err,result)=>{
             if(result.length>0) res.json(result[0]);
             else res.json(null);
@@ -144,12 +153,12 @@ app.post("/buscar-produto", auth, (req,res)=>{
 });
 
 // FINALIZAR VENDA
-app.post("/finalizar", auth, (req,res)=>{
+app.post("/finalizar",auth,checkEmpresa,(req,res)=>{
     const { total, itens } = req.body;
 
     db.query(
         "INSERT INTO vendas (total,empresa_id) VALUES (?,?)",
-        [total, req.session.empresa],
+        [total,req.session.empresa],
         (err,result)=>{
 
             const vendaId = result.insertId;
@@ -166,8 +175,8 @@ app.post("/finalizar", auth, (req,res)=>{
     );
 });
 
-// RELATÓRIO
-app.get("/relatorio", auth, (req,res)=>{
+// RELATORIO
+app.get("/relatorio",auth,checkEmpresa,(req,res)=>{
     db.query(
         "SELECT * FROM vendas WHERE empresa_id=? ORDER BY id DESC",
         [req.session.empresa],
@@ -177,6 +186,47 @@ app.get("/relatorio", auth, (req,res)=>{
     );
 });
 
-// START
+// 🔥 ADMIN
+app.get("/admin",(req,res)=>{
+    db.query("SELECT * FROM empresas",(err,empresas)=>{
+        res.render("admin",{empresas});
+    });
+});
+
+app.post("/admin/criar",(req,res)=>{
+    const { nome,user,pass } = req.body;
+
+    db.query(
+        "INSERT INTO empresas (nome) VALUES (?)",
+        [nome],
+        (err,result)=>{
+
+            const empresaId = result.insertId;
+
+            db.query(
+                "INSERT INTO usuarios (user,pass,empresa_id) VALUES (?,?,?)",
+                [user,pass,empresaId],
+                ()=>res.redirect("/admin")
+            );
+        }
+    );
+});
+
+app.get("/admin/bloquear/:id",(req,res)=>{
+    db.query(
+        "UPDATE empresas SET status='bloqueada' WHERE id=?",
+        [req.params.id],
+        ()=>res.redirect("/admin")
+    );
+});
+
+app.get("/admin/ativar/:id",(req,res)=>{
+    db.query(
+        "UPDATE empresas SET status='ativa' WHERE id=?",
+        [req.params.id],
+        ()=>res.redirect("/admin")
+    );
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=>console.log("🚀 SaaS rodando"));
+app.listen(PORT,()=>console.log("🚀 SaaS completo rodando"));

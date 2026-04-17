@@ -1,0 +1,31 @@
+<h2>Painel Admin</h2>
+
+<form method="POST" action="/admin/criar">
+<input name="nome" placeholder="Empresa">
+<input name="user" placeholder="Usuário">
+<input name="pass" placeholder="Senha">
+<button>Criar Cliente</button>
+</form>
+
+<hr>
+
+<table border="1">
+<tr>
+<th>ID</th>
+<th>Empresa</th>
+<th>Status</th>
+<th>Ações</th>
+</tr>
+
+<% empresas.forEach(e=>{ %>
+<tr>
+<td><%= e.id %></td>
+<td><%= e.nome %></td>
+<td><%= e.status %></td>
+<td>
+<a href="/admin/bloquear/<%= e.id %>">Bloquear</a>
+<a href="/admin/ativar/<%= e.id %>">Ativar</a>
+</td>
+</tr>
+<% }) %>
+</table>
