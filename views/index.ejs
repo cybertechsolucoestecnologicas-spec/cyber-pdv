@@ -5,6 +5,7 @@ const mysql = require("mysql2");
 const app = express();
 app.use(express.json());
 
+// 🔥 CONEXÃO
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -13,6 +14,7 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT || 3306
 });
 
+// 🔌 CONECTAR + TABELAS COMPLETAS
 db.connect(err => {
   if (err) return console.log(err);
 
@@ -27,18 +29,37 @@ db.connect(err => {
       estoque INT
     )
   `);
+
+  db.query(`
+    CREATE TABLE IF NOT EXISTS vendas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      total DECIMAL(10,2),
+      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.query(`
+    CREATE TABLE IF NOT EXISTS itens_venda (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      venda_id INT,
+      codigo VARCHAR(50),
+      nome VARCHAR(100),
+      preco DECIMAL(10,2),
+      quantidade INT
+    )
+  `);
 });
 
-// 🛒 TELA PDV COMPLETA
+// 🛒 PDV + RELATÓRIO + ESTOQUE
 app.get('/', (req, res) => {
   res.send(`
   <html>
   <head>
-    <title>PDV</title>
+    <title>PDV PROFISSIONAL</title>
     <style>
       body { font-family: Arial; background:#111; color:#fff; text-align:center; }
       input { padding:15px; font-size:20px; width:300px; }
-      table { margin:auto; margin-top:20px; width:400px; }
+      table { margin:auto; margin-top:20px; width:500px; }
       td { padding:10px; border-bottom:1px solid #333; }
       button { padding:10px 20px; margin:10px; font-size:16px; }
     </style>
@@ -55,6 +76,9 @@ app.get('/', (req, res) => {
 
     <button onclick="finalizar()">Finalizar Venda</button>
     <button onclick="limpar()">Limpar</button>
+    <button onclick="relatorio()">Ver Relatório</button>
+
+    <div id="relatorio"></div>
 
     <audio id="bip" src="https://www.soundjay.com/buttons/sounds/beep-07.mp3"></audio>
 
@@ -66,6 +90,7 @@ app.get('/', (req, res) => {
       const lista = document.getElementById('lista');
       const totalEl = document.getElementById('total');
       const bip = document.getElementById('bip');
+      const relatorioDiv = document.getElementById('relatorio');
 
       input.addEventListener('keypress', async (e) => {
         if (e.key === 'Enter') {
@@ -102,11 +127,11 @@ app.get('/', (req, res) => {
           total += subtotal;
 
           const row = document.createElement('tr');
-          row.innerHTML = \`
-            <td>\${p.nome}</td>
-            <td>\${p.qtd}x</td>
-            <td>R$ \${subtotal.toFixed(2)}</td>
-          \`;
+          row.innerHTML = `
+            <td>${p.nome}</td>
+            <td>${p.qtd}x</td>
+            <td>R$ ${subtotal.toFixed(2)}</td>
+          `;
 
           lista.appendChild(row);
         });
@@ -119,9 +144,28 @@ app.get('/', (req, res) => {
         render();
       }
 
-      function finalizar() {
-        alert('Venda finalizada! Total: R$ ' + total.toFixed(2));
-        limpar();
+      async function finalizar() {
+        const itens = Object.values(carrinho);
+
+        const res = await fetch('/finalizar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itens, total })
+        });
+
+        const data = await res.json();
+
+        if (data.sucesso) {
+          alert('Venda salva! Estoque atualizado!');
+          limpar();
+        }
+      }
+
+      async function relatorio() {
+        const res = await fetch('/relatorio');
+        const dados = await res.json();
+
+        relatorioDiv.innerHTML = `<h3>Total vendido: R$ ${dados.total}</h3>`;
       }
     </script>
 
@@ -141,7 +185,7 @@ app.get('/add/:codigo/:nome/:preco/:estoque', (req, res) => {
   );
 });
 
-// 🔎 BUSCAR
+// 🔎 BUSCAR PRODUTO
 app.get('/produto/:codigo', (req, res) => {
   db.query(
     "SELECT * FROM produtos WHERE codigo = ?",
@@ -155,6 +199,40 @@ app.get('/produto/:codigo', (req, res) => {
   );
 });
 
+// 💰 FINALIZAR VENDA + BAIXAR ESTOQUE
+app.post('/finalizar', (req, res) => {
+  const { itens, total } = req.body;
+
+  db.query("INSERT INTO vendas (total) VALUES (?)", [total], (err, result) => {
+    if (err) return res.status(500).json(err);
+
+    const vendaId = result.insertId;
+
+    itens.forEach(item => {
+      db.query(
+        "INSERT INTO itens_venda (venda_id, codigo, nome, preco, quantidade) VALUES (?, ?, ?, ?, ?)",
+        [vendaId, item.codigo, item.nome, item.preco, item.qtd]
+      );
+
+      // 🔥 BAIXA ESTOQUE
+      db.query(
+        "UPDATE produtos SET estoque = estoque - ? WHERE codigo = ?",
+        [item.qtd, item.codigo]
+      );
+    });
+
+    res.json({ sucesso: true });
+  });
+});
+
+// 📊 RELATÓRIO
+app.get('/relatorio', (req, res) => {
+  db.query("SELECT SUM(total) as total FROM vendas", (err, result) => {
+    res.json({ total: result[0].total || 0 });
+  });
+});
+
+// 🚀 START
 app.listen(3000, () => {
-  console.log("🚀 PDV rodando em http://localhost:3000");
+  console.log("🚀 SISTEMA COMPLETO rodando em http://localhost:3000");
 });
